@@ -1,5 +1,6 @@
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Wallet, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Wallet, Zap, Coffee, ExternalLink, ShoppingBag } from 'lucide-react';
 
 export const Header = () => {
   return (
@@ -29,7 +30,29 @@ export const Header = () => {
               Transactions
             </a>
           </nav>
-          
+
+          <div className="hidden sm:flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/coffee', '_blank')}
+            >
+              <Coffee className="h-4 w-4 mr-2" />
+              Coffee Demo
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open('/shop', '_blank')}
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Shop Demo
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+
           <WalletMultiButton className="!bg-gradient-solana !hover:shadow-glow !transition-all !duration-300" />
         </div>
       </div>

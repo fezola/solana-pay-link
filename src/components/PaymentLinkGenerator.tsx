@@ -5,12 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, QrCode, ExternalLink } from 'lucide-react';
+import { Copy, QrCode, ExternalLink, FileText, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode';
-import { PublicKey } from '@solana/web3.js';
-import { encodeURL, TransferRequestURLFields } from '@solana/pay';
-import BigNumber from 'bignumber.js';
+import {
+  createInvoice,
+  generatePaymentURL,
+  saveInvoice,
+  PaymentLinkData,
+  SPL_TOKENS
+} from '@/lib/payment-utils';
 
 interface PaymentFormData {
   amount: string;
@@ -18,6 +22,7 @@ interface PaymentFormData {
   title: string;
   description: string;
   recipientWallet: string;
+  expiresIn: string; // minutes
 }
 
 export const PaymentLinkGenerator = () => {
@@ -27,10 +32,11 @@ export const PaymentLinkGenerator = () => {
     token: 'USDC',
     title: '',
     description: '',
-    recipientWallet: ''
+    recipientWallet: '',
+    expiresIn: '60' // 1 hour default
   });
-  const [generatedUrl, setGeneratedUrl] = useState<string>('');
-  const [qrCodeData, setQrCodeData] = useState<string>('');
+  const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleInputChange = (field: keyof PaymentFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -38,49 +44,89 @@ export const PaymentLinkGenerator = () => {
 
   const generatePaymentLink = async () => {
     try {
-      if (!formData.recipientWallet || !formData.amount) {
+      setIsGenerating(true);
+
+      if (!formData.recipientWallet || !formData.amount || !formData.title) {
         toast({
           title: "Missing Fields",
-          description: "Please fill in recipient wallet and amount",
+          description: "Please fill in recipient wallet, amount, and title",
           variant: "destructive"
         });
         return;
       }
 
-      const recipient = new PublicKey(formData.recipientWallet);
-      
-      const urlParams: TransferRequestURLFields = {
-        recipient,
-        amount: new BigNumber(formData.amount),
-        label: formData.title,
-        message: formData.description,
-      };
+      // Validate wallet address
+      try {
+        new PublicKey(formData.recipientWallet);
+      } catch {
+        toast({
+          title: "Invalid Wallet Address",
+          description: "Please enter a valid Solana wallet address",
+          variant: "destructive"
+        });
+        return;
+      }
 
-      // Generate Solana Pay URL
-      const url = encodeURL(urlParams);
-      setGeneratedUrl(url.toString());
+      // Validate amount
+      const amount = parseFloat(formData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a valid amount greater than 0",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create invoice with reference
+      const invoice = createInvoice({
+        recipient: formData.recipientWallet,
+        amount: formData.amount,
+        token: formData.token,
+        title: formData.title,
+        description: formData.description,
+        expiresIn: formData.expiresIn === 'never' ? undefined : parseInt(formData.expiresIn)
+      });
+
+      // Generate payment URL with reference
+      const url = generatePaymentURL(invoice);
 
       // Generate QR Code
-      const qrCode = await QRCode.toDataURL(url.toString(), {
+      const qrCode = await QRCode.toDataURL(url, {
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        width: 300
+        width: 300,
+        margin: 2
       });
-      setQrCodeData(qrCode);
+
+      // Save invoice to local storage
+      saveInvoice(invoice);
+
+      // Create payment link data
+      const linkData: PaymentLinkData = {
+        invoice,
+        url,
+        qrCode
+      };
+
+      setPaymentLink(linkData);
 
       toast({
         title: "Payment Link Generated!",
-        description: "Your Solana Pay link is ready to use",
+        description: `Invoice ${invoice.id} created with reference tracking`,
       });
 
     } catch (error) {
+      console.error('Error generating payment link:', error);
       toast({
         title: "Error",
         description: "Failed to generate payment link. Please check your inputs.",
         variant: "destructive"
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -90,6 +136,13 @@ export const PaymentLinkGenerator = () => {
       title: "Copied!",
       description: "Payment link copied to clipboard",
     });
+  };
+
+  const openCheckoutPage = () => {
+    if (paymentLink) {
+      const checkoutUrl = `/checkout?invoice=${paymentLink.invoice.id}`;
+      window.open(checkoutUrl, '_blank');
+    }
   };
 
   return (
@@ -135,9 +188,21 @@ export const PaymentLinkGenerator = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SOL">SOL</SelectItem>
-                  <SelectItem value="USDC">USDC</SelectItem>
-                  <SelectItem value="USDT">USDT</SelectItem>
+                  {Object.entries(SPL_TOKENS).map(([symbol, token]) => (
+                    <SelectItem key={symbol} value={symbol}>
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={token.logo}
+                          alt={token.symbol}
+                          className="w-5 h-5"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        <span>{token.symbol} - {token.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -163,13 +228,42 @@ export const PaymentLinkGenerator = () => {
             />
           </div>
 
-          <Button 
-            onClick={generatePaymentLink} 
-            className="w-full" 
+          <div className="space-y-2">
+            <Label htmlFor="expiresIn">Expires In (minutes)</Label>
+            <Select value={formData.expiresIn} onValueChange={(value) => handleInputChange('expiresIn', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 minutes</SelectItem>
+                <SelectItem value="30">30 minutes</SelectItem>
+                <SelectItem value="60">1 hour</SelectItem>
+                <SelectItem value="180">3 hours</SelectItem>
+                <SelectItem value="720">12 hours</SelectItem>
+                <SelectItem value="1440">24 hours</SelectItem>
+                <SelectItem value="never">Never expires</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={generatePaymentLink}
+            className="w-full"
             variant="solana"
             size="lg"
+            disabled={isGenerating}
           >
-            Generate Payment Link
+            {isGenerating ? (
+              <>
+                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4 mr-2" />
+                Generate Payment Link
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
@@ -183,40 +277,88 @@ export const PaymentLinkGenerator = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {generatedUrl ? (
+          {paymentLink ? (
             <>
+              {/* Invoice Details */}
+              <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Invoice ID</Label>
+                  <span className="font-mono text-xs">{paymentLink.invoice.id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Reference</Label>
+                  <span className="font-mono text-xs">{paymentLink.invoice.reference.toString().slice(0, 8)}...</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Status</Label>
+                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                    {paymentLink.invoice.status}
+                  </span>
+                </div>
+                {paymentLink.invoice.expiresAt && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Expires</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {paymentLink.invoice.expiresAt.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment URL */}
               <div className="space-y-2">
                 <Label>Payment URL</Label>
                 <div className="flex gap-2">
-                  <Input value={generatedUrl} readOnly className="font-mono text-xs" />
-                  <Button 
-                    variant="outline" 
+                  <Input value={paymentLink.url} readOnly className="font-mono text-xs" />
+                  <Button
+                    variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(generatedUrl)}
+                    onClick={() => copyToClipboard(paymentLink.url)}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
-                    onClick={() => window.open(generatedUrl, '_blank')}
+                    onClick={openCheckoutPage}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              {qrCodeData && (
+              {/* QR Code */}
+              {paymentLink.qrCode && (
                 <div className="flex flex-col items-center space-y-2">
                   <Label>QR Code</Label>
                   <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <img src={qrCodeData} alt="Payment QR Code" className="w-48 h-48" />
+                    <img src={paymentLink.qrCode} alt="Payment QR Code" className="w-48 h-48" />
                   </div>
                   <p className="text-sm text-muted-foreground text-center">
                     Customers can scan this QR code with their mobile wallet
                   </p>
                 </div>
               )}
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => copyToClipboard(paymentLink.url)}
+                  className="w-full"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button
+                  variant="solana"
+                  onClick={openCheckoutPage}
+                  className="w-full"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open Checkout
+                </Button>
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">

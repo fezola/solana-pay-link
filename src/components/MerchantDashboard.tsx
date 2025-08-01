@@ -1,40 +1,144 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PaymentLinkGenerator } from './PaymentLinkGenerator';
 import { TransactionMonitor } from './TransactionMonitor';
+import { InvoiceManager } from './InvoiceManager';
+import { WalletBalance } from './WalletBalance';
+import { TokenFaucet } from './TokenFaucet';
+import { MerchantAuth } from './MerchantAuth';
+import { WebhookManager } from './WebhookManager';
+import { AdvancedAnalytics } from './AdvancedAnalytics';
+import { PaymentConfirmationSystem } from './PaymentConfirmationSystem';
 import { DollarSign, TrendingUp, Users, Link } from 'lucide-react';
+import { getInvoices, PaymentStatus, formatAmount } from '@/lib/payment-utils';
+import { useTransactionMonitor } from '@/hooks/useTransactionMonitor';
+import { getCurrentMerchant, MerchantProfile } from '@/lib/merchant-auth';
+import { useWallet } from '@solana/wallet-adapter-react';
+import BigNumber from 'bignumber.js';
 
 export const MerchantDashboard = () => {
-  const stats = [
+  const { connected } = useWallet();
+  const [currentMerchant, setCurrentMerchant] = useState<MerchantProfile | null>(null);
+
+  // Initialize transaction monitoring
+  useTransactionMonitor({
+    onPaymentConfirmed: (confirmation) => {
+      console.log('Payment confirmed in dashboard:', confirmation);
+      // Refresh stats when payment is confirmed
+      calculateStats();
+    }
+  });
+
+  // Check for current merchant
+  useEffect(() => {
+    if (connected) {
+      const merchant = getCurrentMerchant();
+      setCurrentMerchant(merchant);
+    } else {
+      setCurrentMerchant(null);
+    }
+  }, [connected]);
+
+  const [stats, setStats] = useState([
     {
       title: 'Total Revenue',
-      value: '$2,847.50',
-      change: '+12.5%',
+      value: '$0.00',
+      change: '+0%',
       icon: DollarSign,
       color: 'text-accent'
     },
     {
       title: 'Transactions',
-      value: '156',
-      change: '+8.2%',
+      value: '0',
+      change: '+0%',
       icon: TrendingUp,
       color: 'text-primary'
     },
     {
       title: 'Payment Links',
-      value: '23',
-      change: '+4',
+      value: '0',
+      change: '+0',
       icon: Link,
       color: 'text-solana-purple'
     },
     {
       title: 'Customers',
-      value: '89',
-      change: '+15.3%',
+      value: '0',
+      change: '+0%',
       icon: Users,
       color: 'text-solana-green'
     }
-  ];
+  ]);
+
+  // Calculate real statistics from stored invoices
+  const calculateStats = () => {
+    const invoices = getInvoices();
+    const completedInvoices = invoices.filter(inv => inv.status === PaymentStatus.COMPLETED);
+
+    // Calculate total revenue (in USD equivalent for display)
+    let totalRevenue = new BigNumber(0);
+    completedInvoices.forEach(invoice => {
+      // For simplicity, we'll just sum all amounts regardless of token
+      // In a real app, you'd convert to a common currency
+      totalRevenue = totalRevenue.plus(invoice.amount);
+    });
+
+    // Get unique customer wallets
+    const uniqueCustomers = new Set(
+      completedInvoices
+        .filter(inv => inv.customerWallet)
+        .map(inv => inv.customerWallet!.toString())
+    );
+
+    setStats([
+      {
+        title: 'Total Revenue',
+        value: `$${totalRevenue.toFixed(2)}`,
+        change: '+0%', // Would calculate from historical data
+        icon: DollarSign,
+        color: 'text-accent'
+      },
+      {
+        title: 'Transactions',
+        value: completedInvoices.length.toString(),
+        change: '+0%',
+        icon: TrendingUp,
+        color: 'text-primary'
+      },
+      {
+        title: 'Payment Links',
+        value: invoices.length.toString(),
+        change: '+0',
+        icon: Link,
+        color: 'text-solana-purple'
+      },
+      {
+        title: 'Customers',
+        value: uniqueCustomers.size.toString(),
+        change: '+0%',
+        icon: Users,
+        color: 'text-solana-green'
+      }
+    ]);
+  };
+
+  useEffect(() => {
+    calculateStats();
+
+    // Recalculate stats every 30 seconds
+    const interval = setInterval(calculateStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Show merchant authentication if not authenticated
+  if (!currentMerchant) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <MerchantAuth onAuthSuccess={setCurrentMerchant} />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -60,70 +164,45 @@ export const MerchantDashboard = () => {
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
-          <TabsTrigger value="create">Create Payment Link</TabsTrigger>
-          <TabsTrigger value="monitor">Transaction Monitor</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-6">
+          <TabsTrigger value="create">Create</TabsTrigger>
+          <TabsTrigger value="payments">Payments</TabsTrigger>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="monitor">Monitor</TabsTrigger>
+          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="create" className="space-y-6">
-          <PaymentLinkGenerator />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <PaymentLinkGenerator />
+            </div>
+            <div className="space-y-6">
+              <WalletBalance />
+              <TokenFaucet />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-6">
+          <PaymentConfirmationSystem />
+        </TabsContent>
+
+        <TabsContent value="invoices" className="space-y-6">
+          <InvoiceManager />
         </TabsContent>
 
         <TabsContent value="monitor" className="space-y-6">
           <TransactionMonitor />
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Payment Volume</CardTitle>
-                <CardDescription>Total payment volume over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Chart visualization coming soon</p>
-                    <p className="text-sm">Integration with charting library</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="webhooks" className="space-y-6">
+          <WebhookManager />
+        </TabsContent>
 
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Token Distribution</CardTitle>
-                <CardDescription>Breakdown of payments by token type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-accent rounded-full"></div>
-                      <span className="text-sm font-medium">USDC</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">68%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-primary rounded-full"></div>
-                      <span className="text-sm font-medium">SOL</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">24%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-solana-green rounded-full"></div>
-                      <span className="text-sm font-medium">USDT</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">8%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="analytics" className="space-y-6">
+          <AdvancedAnalytics />
         </TabsContent>
       </Tabs>
     </div>
