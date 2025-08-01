@@ -61,7 +61,27 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				solana: {
+					purple: 'hsl(var(--solana-purple))',
+					green: 'hsl(var(--solana-green))',
+					dark: 'hsl(var(--solana-dark))',
+					card: 'hsl(var(--solana-card))',
+					border: 'hsl(var(--solana-border))'
 				}
+			},
+			backgroundImage: {
+				'gradient-solana': 'var(--gradient-solana)',
+				'gradient-subtle': 'var(--gradient-subtle)',
+				'gradient-hero': 'var(--gradient-hero)'
+			},
+			boxShadow: {
+				'solana': 'var(--shadow-solana)',
+				'glow': 'var(--shadow-glow)',
+				'card': 'var(--shadow-card)'
+			},
+			transitionTimingFunction: {
+				'smooth': 'var(--transition-smooth)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
