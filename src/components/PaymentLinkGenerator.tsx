@@ -5,91 +5,139 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, QrCode, ExternalLink } from 'lucide-react';
+import { Copy, QrCode, ExternalLink, Clock, Webhook } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode';
-import { PublicKey } from '@solana/web3.js';
-import { encodeURL, TransferRequestURLFields } from '@solana/pay';
-import BigNumber from 'bignumber.js';
-
-interface PaymentFormData {
-  amount: string;
-  token: string;
-  title: string;
-  description: string;
-  recipientWallet: string;
-}
+import {
+  PaymentFormData,
+  SupportedToken,
+  TOKEN_REGISTRY,
+  Invoice
+} from '@/types/payment';
+import { createInvoice, getCheckoutURL, isValidSolanaAddress } from '@/lib/solana-pay';
+import { StorageService } from '@/lib/storage';
 
 export const PaymentLinkGenerator = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState<PaymentFormData>({
     amount: '',
-    token: 'USDC',
+    token: 'USDC' as SupportedToken,
     title: '',
     description: '',
-    recipientWallet: ''
+    recipientWallet: '',
+    expiresIn: 24, // 24 hours default
+    webhookUrl: '',
+    metadata: {}
   });
-  const [generatedUrl, setGeneratedUrl] = useState<string>('');
+  const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleInputChange = (field: keyof PaymentFormData, value: string) => {
+  const handleInputChange = (field: keyof PaymentFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const generatePaymentLink = async () => {
     try {
-      if (!formData.recipientWallet || !formData.amount) {
+      setIsGenerating(true);
+
+      // Validation
+      if (!formData.recipientWallet || !formData.amount || !formData.title) {
         toast({
           title: "Missing Fields",
-          description: "Please fill in recipient wallet and amount",
+          description: "Please fill in recipient wallet, amount, and title",
           variant: "destructive"
         });
         return;
       }
 
-      const recipient = new PublicKey(formData.recipientWallet);
-      
-      const urlParams: TransferRequestURLFields = {
-        recipient,
-        amount: new BigNumber(formData.amount),
-        label: formData.title,
-        message: formData.description,
-      };
+      if (!isValidSolanaAddress(formData.recipientWallet)) {
+        toast({
+          title: "Invalid Wallet Address",
+          description: "Please enter a valid Solana wallet address",
+          variant: "destructive"
+        });
+        return;
+      }
 
-      // Generate Solana Pay URL
-      const url = encodeURL(urlParams);
-      setGeneratedUrl(url.toString());
+      const amount = parseFloat(formData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a valid amount greater than 0",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create invoice
+      const invoice = await createInvoice(formData);
+
+      // Save to storage
+      StorageService.saveInvoice(invoice);
+
+      // Generate checkout URL
+      const checkoutUrl = getCheckoutURL(invoice);
 
       // Generate QR Code
-      const qrCode = await QRCode.toDataURL(url.toString(), {
+      const qrCode = await QRCode.toDataURL(checkoutUrl, {
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        width: 300
+        width: 300,
+        margin: 2,
       });
+
+      setGeneratedInvoice(invoice);
       setQrCodeData(qrCode);
 
       toast({
         title: "Payment Link Generated!",
-        description: "Your Solana Pay link is ready to use",
+        description: `Invoice ${invoice.id} created successfully`,
       });
 
     } catch (error) {
+      console.error('Error generating payment link:', error);
       toast({
         title: "Error",
         description: "Failed to generate payment link. Please check your inputs.",
         variant: "destructive"
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const copyToClipboard = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: "Payment link copied to clipboard",
+  const copyToClipboard = async (text: string, type: string = "link") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: `${type} copied to clipboard`,
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy to clipboard",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      amount: '',
+      token: 'USDC' as SupportedToken,
+      title: '',
+      description: '',
+      recipientWallet: '',
+      expiresIn: 24,
+      webhookUrl: '',
+      metadata: {}
     });
+    setGeneratedInvoice(null);
+    setQrCodeData('');
   };
 
   return (
@@ -130,14 +178,19 @@ export const PaymentLinkGenerator = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="token">Token</Label>
-              <Select value={formData.token} onValueChange={(value) => handleInputChange('token', value)}>
+              <Select value={formData.token} onValueChange={(value) => handleInputChange('token', value as SupportedToken)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SOL">SOL</SelectItem>
-                  <SelectItem value="USDC">USDC</SelectItem>
-                  <SelectItem value="USDT">USDT</SelectItem>
+                  {Object.entries(TOKEN_REGISTRY).map(([symbol, info]) => (
+                    <SelectItem key={symbol} value={symbol}>
+                      <div className="flex items-center gap-2">
+                        <span>{info.symbol}</span>
+                        <span className="text-xs text-muted-foreground">({info.name})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -158,19 +211,59 @@ export const PaymentLinkGenerator = () => {
             <Textarea
               id="description"
               placeholder="Additional details about the payment"
-              value={formData.description}
+              value={formData.description || ''}
               onChange={(e) => handleInputChange('description', e.target.value)}
             />
           </div>
 
-          <Button 
-            onClick={generatePaymentLink} 
-            className="w-full" 
-            variant="solana"
-            size="lg"
-          >
-            Generate Payment Link
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="expires">Expires In (Hours)</Label>
+              <Input
+                id="expires"
+                type="number"
+                min="1"
+                max="168"
+                placeholder="24"
+                value={formData.expiresIn || ''}
+                onChange={(e) => handleInputChange('expiresIn', parseInt(e.target.value) || 24)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="webhook" className="flex items-center gap-1">
+                <Webhook className="h-3 w-3" />
+                Webhook URL (Optional)
+              </Label>
+              <Input
+                id="webhook"
+                type="url"
+                placeholder="https://your-site.com/webhook"
+                value={formData.webhookUrl || ''}
+                onChange={(e) => handleInputChange('webhookUrl', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={generatePaymentLink}
+              className="flex-1"
+              variant="solana"
+              size="lg"
+              disabled={isGenerating}
+            >
+              {isGenerating ? 'Generating...' : 'Generate Payment Link'}
+            </Button>
+            {generatedInvoice && (
+              <Button
+                onClick={resetForm}
+                variant="outline"
+                size="lg"
+              >
+                Reset
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -183,29 +276,81 @@ export const PaymentLinkGenerator = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {generatedUrl ? (
+          {generatedInvoice ? (
             <>
+              {/* Invoice Details */}
+              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Invoice ID:</span>
+                  <span className="font-mono text-xs">{generatedInvoice.id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Amount:</span>
+                  <span className="font-semibold">{generatedInvoice.amount} {generatedInvoice.token}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Status:</span>
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    {generatedInvoice.status}
+                  </span>
+                </div>
+                {generatedInvoice.expiresAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Expires:</span>
+                    <span className="text-xs flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {generatedInvoice.expiresAt.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Checkout URL */}
               <div className="space-y-2">
-                <Label>Payment URL</Label>
+                <Label>Checkout URL</Label>
                 <div className="flex gap-2">
-                  <Input value={generatedUrl} readOnly className="font-mono text-xs" />
-                  <Button 
-                    variant="outline" 
+                  <Input
+                    value={getCheckoutURL(generatedInvoice)}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(generatedUrl)}
+                    onClick={() => copyToClipboard(getCheckoutURL(generatedInvoice), "Checkout URL")}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
-                    onClick={() => window.open(generatedUrl, '_blank')}
+                    onClick={() => window.open(getCheckoutURL(generatedInvoice), '_blank')}
                   >
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
+              {/* Solana Pay URL */}
+              <div className="space-y-2">
+                <Label>Solana Pay URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={generatedInvoice.paymentUrl}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(generatedInvoice.paymentUrl, "Solana Pay URL")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* QR Code */}
               {qrCodeData && (
                 <div className="flex flex-col items-center space-y-2">
                   <Label>QR Code</Label>
@@ -213,7 +358,7 @@ export const PaymentLinkGenerator = () => {
                     <img src={qrCodeData} alt="Payment QR Code" className="w-48 h-48" />
                   </div>
                   <p className="text-sm text-muted-foreground text-center">
-                    Customers can scan this QR code with their mobile wallet
+                    Customers can scan this QR code or visit the checkout URL
                   </p>
                 </div>
               )}
@@ -222,7 +367,7 @@ export const PaymentLinkGenerator = () => {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <QrCode className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground">
-                Fill out the form and click "Generate Payment Link" to create your Solana Pay link
+                Fill out the form and click "Generate Payment Link" to create your invoice
               </p>
             </div>
           )}
