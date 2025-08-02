@@ -216,6 +216,19 @@ export const Checkout = () => {
         }
       });
 
+      // Check if this was a shop order and redirect back to shop with success
+      if (invoice.description?.includes('Shop Order:')) {
+        setTimeout(() => {
+          toast({
+            title: "Redirecting to Store...",
+            description: "Taking you back to the shop",
+          });
+
+          // Redirect back to shop with success parameter
+          window.location.href = '/shop?payment=success&invoice=' + invoice.id;
+        }, 3000); // Wait 3 seconds to show success message
+      }
+
     } catch (error) {
       console.error('Payment failed:', error);
       setPaymentStatus(PaymentStatus.FAILED);

@@ -94,6 +94,28 @@ export const EcommerceDemo = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check for payment success on page load
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const invoiceId = searchParams.get('invoice');
+
+    if (paymentStatus === 'success' && invoiceId) {
+      // Show success message
+      toast({
+        title: "🎉 Payment Successful!",
+        description: "Your order has been completed successfully. Thank you for your purchase!",
+      });
+
+      // Clear the cart since payment was successful
+      setCart([]);
+      setPaymentSuccess(true);
+
+      // Clean up URL parameters
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, toast]);
   
   const [cart, setCart] = useState<Array<{product: any, quantity: number}>>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -492,6 +514,25 @@ export const EcommerceDemo = () => {
   // Main store view
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Success Banner */}
+      {paymentSuccess && (
+        <div className="bg-green-50 border-b border-green-200">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-3 text-green-800">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  ✅
+                </div>
+                <div>
+                  <h3 className="font-semibold">Payment Successful!</h3>
+                  <p className="text-sm text-green-600">Your order has been completed. Thank you for your purchase!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-6">

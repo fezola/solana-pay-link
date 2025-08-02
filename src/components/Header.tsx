@@ -20,14 +20,17 @@ export const Header = () => {
         
         <div className="flex items-center gap-4">
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Dashboard
             </a>
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="/payment-links" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Payment Links
             </a>
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <a href="/transactions" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Transactions
+            </a>
+            <a href="/integration" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              Integration
             </a>
           </nav>
 

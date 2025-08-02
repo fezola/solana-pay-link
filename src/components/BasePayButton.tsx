@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 
 interface BasePayButtonProps {
   amount: string; // USD amount like "5.00"
@@ -21,6 +21,7 @@ export const BasePayButton = ({
   onPaymentComplete,
   onPaymentError
 }: BasePayButtonProps) => {
+  const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [sdk, setSdk] = useState<any>(null);
@@ -277,6 +278,7 @@ export const OfficialBasePayButton = ({
   onPaymentComplete,
   onPaymentError
 }: BasePayButtonProps) => {
+  const { toast } = useToast();
   const [isAvailable, setIsAvailable] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
 

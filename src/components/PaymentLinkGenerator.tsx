@@ -22,7 +22,9 @@ interface PaymentFormData {
   title: string;
   description: string;
   recipientWallet: string;
+  baseWallet: string; // Add Base wallet for multi-network
   expiresIn: string; // minutes
+  network: 'solana' | 'base' | 'multi'; // Add multi-network option
 }
 
 export const PaymentLinkGenerator = () => {
@@ -33,7 +35,9 @@ export const PaymentLinkGenerator = () => {
     title: '',
     description: '',
     recipientWallet: '',
-    expiresIn: '60' // 1 hour default
+    baseWallet: '',
+    expiresIn: '60', // 1 hour default
+    network: 'multi' // Default to multi-network
   });
   const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,16 +59,49 @@ export const PaymentLinkGenerator = () => {
         return;
       }
 
-      // Validate wallet address
-      try {
-        new PublicKey(formData.recipientWallet);
-      } catch {
-        toast({
-          title: "Invalid Wallet Address",
-          description: "Please enter a valid Solana wallet address",
-          variant: "destructive"
-        });
-        return;
+      // Validate wallet addresses based on network
+      if (formData.network === 'solana') {
+        try {
+          new PublicKey(formData.recipientWallet);
+        } catch {
+          toast({
+            title: "Invalid Solana Address",
+            description: "Please enter a valid Solana wallet address",
+            variant: "destructive"
+          });
+          return;
+        }
+      } else if (formData.network === 'base') {
+        // Validate ETH address (0x followed by 40 hex characters)
+        if (!/^0x[a-fA-F0-9]{40}$/.test(formData.recipientWallet)) {
+          toast({
+            title: "Invalid ETH Address",
+            description: "Please enter a valid Ethereum/Base wallet address (0x...)",
+            variant: "destructive"
+          });
+          return;
+        }
+      } else if (formData.network === 'multi') {
+        // Validate both Solana and Base addresses
+        try {
+          new PublicKey(formData.recipientWallet);
+        } catch {
+          toast({
+            title: "Invalid Solana Address",
+            description: "Please enter a valid Solana wallet address",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!/^0x[a-fA-F0-9]{40}$/.test(formData.baseWallet)) {
+          toast({
+            title: "Invalid Base Address",
+            description: "Please enter a valid Ethereum/Base wallet address (0x...)",
+            variant: "destructive"
+          });
+          return;
+        }
       }
 
       // Validate amount
@@ -155,19 +192,96 @@ export const PaymentLinkGenerator = () => {
             Payment Link Generator
           </CardTitle>
           <CardDescription>
-            Create a Solana Pay link for your customers to send payments directly to your wallet
+            Create payment links for Solana or Base networks
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Network Selection */}
           <div className="space-y-2">
-            <Label htmlFor="recipient">Recipient Wallet Address</Label>
-            <Input
-              id="recipient"
-              placeholder="Enter your Solana wallet address"
-              value={formData.recipientWallet}
-              onChange={(e) => handleInputChange('recipientWallet', e.target.value)}
-            />
+            <Label>Payment Network</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant={formData.network === 'multi' ? 'default' : 'outline'}
+                onClick={() => {
+                  handleInputChange('network', 'multi');
+                  handleInputChange('token', 'USDC'); // Reset token
+                }}
+                className="flex items-center gap-2"
+              >
+                <div className="flex -space-x-1">
+                  <img src="/solana-sol-logo.png" alt="Solana" className="w-4 h-4" />
+                  <img src="/usd-coin-usdc-logo.png" alt="Base" className="w-4 h-4" />
+                </div>
+                Multi
+              </Button>
+              <Button
+                type="button"
+                variant={formData.network === 'solana' ? 'default' : 'outline'}
+                onClick={() => {
+                  handleInputChange('network', 'solana');
+                  handleInputChange('token', 'USDC'); // Reset token
+                  handleInputChange('recipientWallet', ''); // Clear wallet
+                }}
+                className="flex items-center gap-2"
+              >
+                <img src="/solana-sol-logo.png" alt="Solana" className="w-4 h-4" />
+                Solana
+              </Button>
+              <Button
+                type="button"
+                variant={formData.network === 'base' ? 'default' : 'outline'}
+                onClick={() => {
+                  handleInputChange('network', 'base');
+                  handleInputChange('token', 'USDC'); // Reset token
+                  handleInputChange('recipientWallet', ''); // Clear wallet
+                }}
+                className="flex items-center gap-2"
+              >
+                <img src="/usd-coin-usdc-logo.png" alt="Base" className="w-4 h-4" />
+                Base
+              </Button>
+            </div>
           </div>
+
+          {/* Wallet Address Fields */}
+          {formData.network === 'multi' ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="solana-wallet">Solana Wallet Address</Label>
+                <Input
+                  id="solana-wallet"
+                  placeholder="Enter your Solana wallet address"
+                  value={formData.recipientWallet}
+                  onChange={(e) => handleInputChange('recipientWallet', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="base-wallet">Base/Ethereum Wallet Address</Label>
+                <Input
+                  id="base-wallet"
+                  placeholder="Enter your ETH/Base wallet address (0x...)"
+                  value={formData.baseWallet}
+                  onChange={(e) => handleInputChange('baseWallet', e.target.value)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="recipient">
+                {formData.network === 'solana' ? 'Solana Wallet Address' : 'Ethereum/Base Wallet Address'}
+              </Label>
+              <Input
+                id="recipient"
+                placeholder={formData.network === 'solana'
+                  ? 'Enter your Solana wallet address'
+                  : 'Enter your ETH/Base wallet address (0x...)'
+                }
+                value={formData.recipientWallet}
+                onChange={(e) => handleInputChange('recipientWallet', e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -188,21 +302,32 @@ export const PaymentLinkGenerator = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SPL_TOKENS).map(([symbol, token]) => (
-                    <SelectItem key={symbol} value={symbol}>
+                  {formData.network === 'solana' ? (
+                    // Solana tokens
+                    Object.entries(SPL_TOKENS).map(([symbol, token]) => (
+                      <SelectItem key={symbol} value={symbol}>
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={token.logo}
+                            alt={token.symbol}
+                            className="w-5 h-5"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span>{token.symbol} - {token.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    // Base tokens (USDC only for now)
+                    <SelectItem value="USDC">
                       <div className="flex items-center gap-2">
-                        <img
-                          src={token.logo}
-                          alt={token.symbol}
-                          className="w-5 h-5"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                        <span>{token.symbol} - {token.name}</span>
+                        <img src="/usd-coin-usdc-logo.png" alt="USDC" className="w-5 h-5" />
+                        <span>USDC - USD Coin</span>
                       </div>
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>

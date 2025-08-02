@@ -10,6 +10,9 @@ import { Checkout } from "./pages/Checkout";
 import { BuyMeCoffee } from "./pages/BuyMeCoffee";
 import { EcommerceDemo } from "./pages/EcommerceDemo";
 import { MultiChainDemo } from "./pages/MultiChainDemo";
+import { PaymentLinks } from "./pages/PaymentLinks";
+import { Transactions } from "./pages/Transactions";
+import { MerchantIntegration } from "./pages/MerchantIntegration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,9 @@ const App = () => (
               <Route path="/coffee" element={<BuyMeCoffee />} />
               <Route path="/shop" element={<EcommerceDemo />} />
               <Route path="/multichain" element={<MultiChainDemo />} />
+              <Route path="/payment-links" element={<PaymentLinks />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/integration" element={<MerchantIntegration />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
