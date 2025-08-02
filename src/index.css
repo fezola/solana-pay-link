@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 245 13% 11%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 265 100% 70%;
+    --primary: 180 100% 50%;
     --primary-foreground: 0 0% 98%;
 
     --secondary: 245 13% 15%;
@@ -34,22 +34,22 @@ All colors MUST be HSL.
 
     --border: 245 13% 15%;
     --input: 245 13% 15%;
-    --ring: 265 100% 70%;
+    --ring: 180 100% 50%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
     
-    /* Solana Pay Design System */
-    --solana-purple: 265 100% 70%;
+    /* SolPay Design System */
+    --solana-purple: 180 100% 50%;
     --solana-green: 130 90% 50%;
     --solana-dark: 245 13% 9%;
     --solana-card: 245 13% 11%;
     --solana-border: 245 13% 15%;
-    
+
     /* Gradients */
     --gradient-solana: linear-gradient(135deg, hsl(var(--solana-purple)), hsl(var(--solana-green)));
     --gradient-subtle: linear-gradient(135deg, hsl(var(--solana-card)), hsl(var(--solana-border)));
-    --gradient-hero: linear-gradient(135deg, hsl(265 100% 70% / 0.9), hsl(130 90% 50% / 0.9));
-    
+    --gradient-hero: linear-gradient(135deg, hsl(180 100% 50% / 0.9), hsl(130 90% 50% / 0.9));
+
     /* Shadows */
     --shadow-solana: 0 10px 40px hsl(var(--solana-purple) / 0.2);
     --shadow-glow: 0 0 40px hsl(var(--solana-purple) / 0.15);
@@ -85,7 +85,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 265 100% 70%;
+    --primary: 180 100% 50%;
     --primary-foreground: 0 0% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -102,7 +102,7 @@ All colors MUST be HSL.
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 265 100% 70%;
+    --ring: 180 100% 50%;
   }
 }
 

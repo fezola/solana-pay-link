@@ -285,7 +285,7 @@ export const UnifiedCheckout = ({
                     </p>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center">
                           <span className="text-white text-xs font-bold">SOL</span>
                         </div>
                         <span className="text-xs text-green-700 font-medium">Solana</span>
@@ -371,7 +371,7 @@ export const UnifiedCheckout = ({
               {/* SolPay Branding */}
               <div className="mt-12 pt-8 border-t border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-600 rounded-xl flex items-center justify-center">
                     <Zap className="h-5 w-5 text-white" />
                   </div>
                   <div>

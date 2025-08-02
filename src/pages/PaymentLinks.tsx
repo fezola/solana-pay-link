@@ -166,7 +166,7 @@ export const PaymentLinks = () => {
 
   const getNetworkColor = (network: string) => {
     return network === 'solana'
-      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+      ? 'bg-teal-500/10 text-teal-400 border-teal-500/20'
       : 'bg-blue-500/10 text-blue-400 border-blue-500/20';
   };
 

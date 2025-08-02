@@ -11,7 +11,7 @@ export const Header = () => {
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-solana p-2 rounded-lg shadow-glow">
+          <div className="bg-gradient-solana p-2 rounded-xl shadow-glow">
             <Zap className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -62,17 +62,17 @@ export const Header = () => {
 
           {!connected && (
             <Link to="/recover">
-              <Button variant="outline" size="sm" className="flex items-center gap-2 border-orange-500/20 text-orange-500 hover:bg-orange-500/10">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 border-orange-500/20 text-orange-500 hover:bg-orange-500/10 rounded-xl">
                 <LifeBuoy className="w-4 h-4" />
-                Recover Account
+                Recover
               </Button>
             </Link>
           )}
 
           <WalletMultiButton
-            className="!bg-gradient-solana !hover:shadow-glow !transition-all !duration-300"
+            className="!bg-gradient-solana !hover:shadow-glow !transition-all !duration-300 !rounded-xl"
           >
-            {connected ? 'Connected' : 'Connect Wallet'}
+            {connected ? 'Connected' : 'Connect'}
           </WalletMultiButton>
         </div>
       </div>

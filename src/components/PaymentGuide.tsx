@@ -55,7 +55,7 @@ export const PaymentGuide = () => {
               </div>
               
               <div className="text-center">
-                <div className="w-12 h-12 bg-purple-500 text-white rounded-full flex items-center justify-center mx-auto mb-2">
+                <div className="w-12 h-12 bg-teal-500 text-white rounded-xl flex items-center justify-center mx-auto mb-2">
                   3
                 </div>
                 <h5 className="font-medium text-sm">System Detects</h5>
@@ -65,7 +65,7 @@ export const PaymentGuide = () => {
               </div>
               
               <div className="text-center">
-                <div className="w-12 h-12 bg-orange-500 text-white rounded-full flex items-center justify-center mx-auto mb-2">
+                <div className="w-12 h-12 bg-orange-500 text-white rounded-xl flex items-center justify-center mx-auto mb-2">
                   4
                 </div>
                 <h5 className="font-medium text-sm">You're Notified</h5>
