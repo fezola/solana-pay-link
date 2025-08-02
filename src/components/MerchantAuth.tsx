@@ -49,36 +49,28 @@ export const MerchantAuth = ({ onAuthSuccess }: MerchantAuthProps) => {
 
   // Check for existing merchant on wallet connection
   useEffect(() => {
-    try {
-      if (connected && publicKey) {
-        const merchant = authenticateMerchant(publicKey);
-        if (merchant) {
-          setCurrentMerchant(merchant);
-          onAuthSuccess(merchant);
-        } else {
-          // Check if there's a stored current merchant
-          const storedMerchant = getCurrentMerchant();
-          if (storedMerchant) {
-            // Handle case where walletAddress might be a string
-            const walletMatches = typeof storedMerchant.walletAddress === 'string'
-              ? storedMerchant.walletAddress === publicKey.toString()
-              : storedMerchant.walletAddress.equals(publicKey);
-
-            if (walletMatches) {
-              setCurrentMerchant(storedMerchant);
-              onAuthSuccess(storedMerchant);
-            }
+    const authenticateWallet = async () => {
+      try {
+        if (connected && publicKey) {
+          const merchant = await authenticateMerchant(publicKey);
+          if (merchant) {
+            setCurrentMerchant(merchant);
+            onAuthSuccess(merchant);
+          } else {
+            setCurrentMerchant(null);
           }
+        } else {
+          setCurrentMerchant(null);
+          clearCurrentMerchant();
         }
-      } else {
+      } catch (error) {
+        console.error('Error in merchant authentication:', error);
         setCurrentMerchant(null);
         clearCurrentMerchant();
       }
-    } catch (error) {
-      console.error('Error in merchant authentication:', error);
-      setCurrentMerchant(null);
-      clearCurrentMerchant();
-    }
+    };
+
+    authenticateWallet();
   }, [connected, publicKey, onAuthSuccess]);
 
   const handleInputChange = (field: string, value: string) => {
@@ -126,7 +118,7 @@ export const MerchantAuth = ({ onAuthSuccess }: MerchantAuthProps) => {
     }
 
     try {
-      const merchant = registerMerchant({
+      const merchant = await registerMerchant({
         walletAddress: publicKey,
         businessName: formData.businessName,
         email: formData.email || undefined,
@@ -194,7 +186,15 @@ export const MerchantAuth = ({ onAuthSuccess }: MerchantAuthProps) => {
             </div>
             <div>
               <Label className="text-sm text-muted-foreground">Wallet Address</Label>
-              <p className="font-mono text-sm">{currentMerchant.walletAddress.toString().slice(0, 8)}...</p>
+              <p className="font-mono text-sm">
+                {currentMerchant.walletAddress
+                  ? (typeof currentMerchant.walletAddress === 'string'
+                      ? currentMerchant.walletAddress.slice(0, 8)
+                      : currentMerchant.walletAddress.toString().slice(0, 8)
+                    ) + '...'
+                  : 'N/A'
+                }
+              </p>
             </div>
             {currentMerchant.email && (
               <div>

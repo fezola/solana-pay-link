@@ -38,7 +38,7 @@ export const BasePayButton = ({
       if (baseModule.createBaseAccountSDK) {
         const baseSDK = baseModule.createBaseAccountSDK({
           appName: 'Solana Pay Link',
-          appLogo: '/usd-coin-usdc-logo.png'
+          appLogo: '/base.JPG'
         });
 
         setSdk(baseSDK);

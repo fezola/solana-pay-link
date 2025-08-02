@@ -211,7 +211,7 @@ export const PaymentLinkGenerator = () => {
               >
                 <div className="flex -space-x-1">
                   <img src="/solana-sol-logo.png" alt="Solana" className="w-4 h-4" />
-                  <img src="/usd-coin-usdc-logo.png" alt="Base" className="w-4 h-4" />
+                  <img src="/base.JPG" alt="Base" className="w-4 h-4" />
                 </div>
                 Multi
               </Button>
@@ -238,7 +238,7 @@ export const PaymentLinkGenerator = () => {
                 }}
                 className="flex items-center gap-2"
               >
-                <img src="/usd-coin-usdc-logo.png" alt="Base" className="w-4 h-4" />
+                <img src="/base.JPG" alt="Base" className="w-4 h-4" />
                 Base
               </Button>
             </div>

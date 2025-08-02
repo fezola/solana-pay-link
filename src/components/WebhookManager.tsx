@@ -61,24 +61,28 @@ export const WebhookManager = () => {
     setWebhookSecret(secret);
   };
 
-  const saveWebhookSettings = () => {
+  const saveWebhookSettings = async () => {
     if (!merchant) return;
 
     try {
-      updateMerchantSettings(merchant.id, {
+      const success = await updateMerchantSettings(merchant.walletAddress, {
         webhookUrl: webhookUrl || undefined,
         webhookSecret: webhookSecret || undefined
       });
 
-      // Update local state
-      const updatedMerchant = getCurrentMerchant();
-      setMerchant(updatedMerchant);
-      setSettings(updatedMerchant?.settings || null);
+      if (success) {
+        // Update local state
+        const updatedMerchant = getCurrentMerchant();
+        setMerchant(updatedMerchant);
+        setSettings(updatedMerchant?.settings || null);
 
-      toast({
-        title: "Settings Saved",
-        description: "Webhook settings have been updated successfully",
-      });
+        toast({
+          title: "Settings Saved",
+          description: "Webhook settings have been updated successfully",
+        });
+      } else {
+        throw new Error('Failed to update settings');
+      }
     } catch (error) {
       toast({
         title: "Save Failed",

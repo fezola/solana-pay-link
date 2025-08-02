@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import { MerchantService } from './supabase-service';
 
 // Merchant profile interface
 export interface MerchantProfile {
@@ -33,237 +34,208 @@ const DEFAULT_MERCHANT_SETTINGS: MerchantSettings = {
   allowedTokens: ['SOL', 'USDC', 'USDT']
 };
 
-// Storage keys
-const STORAGE_KEYS = {
-  CURRENT_MERCHANT: 'solpay_current_merchant',
-  MERCHANT_PROFILES: 'solpay_merchant_profiles'
-};
+// In-memory current merchant (session only)
+let currentMerchant: MerchantProfile | null = null;
 
-// Generate merchant ID
-function generateMerchantId(): string {
-  return `merchant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// Create new merchant profile
-export function createMerchantProfile(params: {
-  walletAddress: PublicKey;
-  businessName: string;
-  email?: string;
-  website?: string;
-  description?: string;
-}): MerchantProfile {
-  const now = new Date();
-  
+// Convert Supabase merchant to local format
+function convertSupabaseMerchant(supabaseMerchant: any, walletAddress: PublicKey): MerchantProfile {
   return {
-    id: generateMerchantId(),
-    walletAddress: params.walletAddress,
-    businessName: params.businessName,
-    email: params.email,
-    website: params.website,
-    description: params.description,
-    createdAt: now,
-    updatedAt: now,
-    settings: { ...DEFAULT_MERCHANT_SETTINGS }
+    id: supabaseMerchant.id,
+    walletAddress: walletAddress,
+    businessName: supabaseMerchant.business_name,
+    email: supabaseMerchant.email || undefined,
+    website: supabaseMerchant.website || undefined,
+    description: supabaseMerchant.description || undefined,
+    createdAt: new Date(supabaseMerchant.created_at),
+    updatedAt: new Date(supabaseMerchant.updated_at),
+    settings: DEFAULT_MERCHANT_SETTINGS
   };
 }
 
-// Save merchant profile
-export function saveMerchantProfile(profile: MerchantProfile): void {
-  const profiles = getStoredMerchantProfiles();
-  profiles[profile.id] = profile;
-  
-  localStorage.setItem(STORAGE_KEYS.MERCHANT_PROFILES, JSON.stringify(profiles, (key, value) => {
-    if (value instanceof PublicKey) {
-      return { _type: 'PublicKey', value: value.toString() };
-    }
-    if (value instanceof Date) {
-      return { _type: 'Date', value: value.toISOString() };
-    }
-    return value;
-  }));
-}
-
-// Get all stored merchant profiles
-export function getStoredMerchantProfiles(): Record<string, MerchantProfile> {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEYS.MERCHANT_PROFILES);
-    if (!stored) return {};
-
-    const parsed = JSON.parse(stored, (key, value) => {
-      if (value && typeof value === 'object' && value._type) {
-        switch (value._type) {
-          case 'PublicKey':
-            return new PublicKey(value.value);
-          case 'Date':
-            return new Date(value.value);
-        }
-      }
-      return value;
-    });
-
-    // Ensure walletAddress is always a PublicKey object
-    Object.values(parsed).forEach((profile: any) => {
-      if (typeof profile.walletAddress === 'string') {
-        profile.walletAddress = new PublicKey(profile.walletAddress);
-      }
-    });
-
-    return parsed;
-  } catch (error) {
-    console.error('Error loading merchant profiles:', error);
-    return {};
-  }
-}
-
-// Get merchant profile by wallet address
-export function getMerchantByWallet(walletAddress: PublicKey): MerchantProfile | null {
-  const profiles = getStoredMerchantProfiles();
-  return Object.values(profiles).find(profile => {
-    // Handle case where walletAddress might be a string after deserialization
-    if (typeof profile.walletAddress === 'string') {
-      return profile.walletAddress === walletAddress.toString();
-    }
-    return profile.walletAddress.equals(walletAddress);
-  }) || null;
-}
-
-// Get merchant profile by ID
-export function getMerchantById(id: string): MerchantProfile | null {
-  const profiles = getStoredMerchantProfiles();
-  return profiles[id] || null;
-}
-
-// Set current merchant
-export function setCurrentMerchant(merchantId: string): void {
-  localStorage.setItem(STORAGE_KEYS.CURRENT_MERCHANT, merchantId);
-}
-
-// Get current merchant
+// Session management (in-memory only)
 export function getCurrentMerchant(): MerchantProfile | null {
+  return currentMerchant;
+}
+
+export function setCurrentMerchant(merchantId: string): void {
+  // This is now just for session management
+  // The actual merchant data comes from Supabase
+}
+
+export function clearCurrentMerchant(): void {
+  currentMerchant = null;
+}
+
+// Get merchant profile by wallet address (async Supabase version)
+export async function getMerchantByWallet(walletAddress: PublicKey): Promise<MerchantProfile | null> {
   try {
-    const currentId = localStorage.getItem(STORAGE_KEYS.CURRENT_MERCHANT);
-    if (!currentId) return null;
-    
-    return getMerchantById(currentId);
+    const supabaseMerchant = await MerchantService.getMerchantByWallet(walletAddress);
+    if (supabaseMerchant) {
+      return convertSupabaseMerchant(supabaseMerchant, walletAddress);
+    }
+    return null;
   } catch (error) {
-    console.error('Error getting current merchant:', error);
+    console.error('Error getting merchant by wallet:', error);
     return null;
   }
 }
 
-// Clear current merchant (logout)
-export function clearCurrentMerchant(): void {
-  localStorage.removeItem(STORAGE_KEYS.CURRENT_MERCHANT);
-}
-
-// Update merchant profile
-export function updateMerchantProfile(
-  id: string, 
-  updates: Partial<Omit<MerchantProfile, 'id' | 'walletAddress' | 'createdAt'>>
-): void {
-  const profiles = getStoredMerchantProfiles();
-  if (profiles[id]) {
-    profiles[id] = {
-      ...profiles[id],
-      ...updates,
-      updatedAt: new Date()
-    };
-    saveMerchantProfile(profiles[id]);
+// Get merchant profile by ID (async Supabase version)
+export async function getMerchantById(id: string): Promise<MerchantProfile | null> {
+  try {
+    // This would need to be implemented in MerchantService
+    // For now, return null as we primarily use wallet-based lookup
+    return null;
+  } catch (error) {
+    console.error('Error getting merchant by ID:', error);
+    return null;
   }
 }
 
-// Update merchant settings
-export function updateMerchantSettings(
-  merchantId: string,
+// Update merchant profile (async Supabase version)
+export async function updateMerchantProfile(
+  walletAddress: PublicKey,
+  updates: Partial<{
+    businessName: string;
+    email: string;
+    website: string;
+    description: string;
+  }>
+): Promise<MerchantProfile | null> {
+  try {
+    const updatedMerchant = await MerchantService.updateMerchant(walletAddress, {
+      business_name: updates.businessName,
+      email: updates.email,
+      website: updates.website,
+      description: updates.description,
+    });
+    return convertSupabaseMerchant(updatedMerchant, walletAddress);
+  } catch (error) {
+    console.error('Error updating merchant profile:', error);
+    return null;
+  }
+}
+
+// Update merchant settings (async Supabase version)
+export async function updateMerchantSettings(
+  walletAddress: PublicKey,
   settings: Partial<MerchantSettings>
-): void {
-  const merchant = getMerchantById(merchantId);
-  if (merchant) {
-    merchant.settings = { ...merchant.settings, ...settings };
-    merchant.updatedAt = new Date();
-    saveMerchantProfile(merchant);
+): Promise<boolean> {
+  try {
+    // For now, we'll store settings in the description field as JSON
+    // In a real implementation, you'd want a separate settings table
+    const merchant = await MerchantService.getMerchantByWallet(walletAddress);
+    if (!merchant) {
+      throw new Error('Merchant not found');
+    }
+
+    // Update the current merchant in memory
+    if (currentMerchant && currentMerchant.walletAddress.equals(walletAddress)) {
+      currentMerchant.settings = { ...currentMerchant.settings, ...settings };
+    }
+
+    // Note: In a full implementation, you'd want to add a settings table to Supabase
+    // For now, this just updates the in-memory settings
+    return true;
+  } catch (error) {
+    console.error('Error updating merchant settings:', error);
+    return false;
   }
 }
 
 // Check if wallet is authenticated as merchant
 export function isWalletAuthenticated(walletAddress: PublicKey): boolean {
-  const currentMerchant = getCurrentMerchant();
-  if (!currentMerchant) return false;
-
-  // Handle case where walletAddress might be a string after deserialization
-  if (typeof currentMerchant.walletAddress === 'string') {
-    return currentMerchant.walletAddress === walletAddress.toString();
-  }
-  return currentMerchant.walletAddress.equals(walletAddress);
+  const current = getCurrentMerchant();
+  if (!current) return false;
+  return current.walletAddress.equals(walletAddress);
 }
 
-// Authenticate merchant with wallet
-export function authenticateMerchant(walletAddress: PublicKey): MerchantProfile | null {
-  const merchant = getMerchantByWallet(walletAddress);
-  if (merchant) {
-    setCurrentMerchant(merchant.id);
-    return merchant;
+// Authenticate merchant with wallet (Supabase-only)
+export async function authenticateMerchant(walletAddress: PublicKey): Promise<MerchantProfile | null> {
+  try {
+    const supabaseMerchant = await MerchantService.getMerchantByWallet(walletAddress);
+
+    if (supabaseMerchant) {
+      const merchant = convertSupabaseMerchant(supabaseMerchant, walletAddress);
+      currentMerchant = merchant;
+      return merchant;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to authenticate merchant:', error);
+    return null;
   }
+}
+
+// Synchronous version that returns null (for backward compatibility)
+export function authenticateMerchantSync(walletAddress: PublicKey): MerchantProfile | null {
+  // Since we're Supabase-only now, this always returns null
+  // Components should use the async version
+  console.warn('authenticateMerchantSync is deprecated, use authenticateMerchant instead');
   return null;
 }
 
-// Register new merchant
-export function registerMerchant(params: {
+// Register new merchant (Supabase-only)
+export async function registerMerchant(params: {
   walletAddress: PublicKey;
   businessName: string;
   email?: string;
   website?: string;
   description?: string;
-}): MerchantProfile {
-  // Check if merchant already exists
-  const existingMerchant = getMerchantByWallet(params.walletAddress);
-  if (existingMerchant) {
-    throw new Error('Merchant already registered with this wallet');
-  }
+}): Promise<MerchantProfile> {
+  try {
+    // Check if merchant already exists
+    const existingMerchant = await MerchantService.getMerchantByWallet(params.walletAddress);
+    if (existingMerchant) {
+      throw new Error('Merchant already registered with this wallet');
+    }
 
-  // Create new merchant profile
-  const merchant = createMerchantProfile(params);
-  saveMerchantProfile(merchant);
-  setCurrentMerchant(merchant.id);
-  
-  return merchant;
+    // Create in Supabase
+    const supabaseMerchant = await MerchantService.createMerchant({
+      walletAddress: params.walletAddress,
+      businessName: params.businessName,
+      email: params.email,
+      website: params.website,
+      description: params.description,
+    });
+
+    // Convert and set as current merchant
+    const merchant = convertSupabaseMerchant(supabaseMerchant, params.walletAddress);
+    currentMerchant = merchant;
+
+    return merchant;
+  } catch (error) {
+    console.error('Failed to register merchant:', error);
+    throw error;
+  }
 }
 
-// Get merchant statistics
-export function getMerchantStats(merchantId: string): {
+// Get merchant statistics (Supabase-only)
+export async function getMerchantStats(walletAddress: PublicKey): Promise<{
   totalInvoices: number;
   completedPayments: number;
   totalRevenue: number;
   activeInvoices: number;
-} {
-  // This would integrate with the invoice system
-  // Import here to avoid circular dependency
+  pendingInvoices: number;
+}> {
   try {
-    const { getInvoices, PaymentStatus } = require('./payment-utils');
-    const invoices = getInvoices();
-
-    // Filter invoices for this merchant (would need to add merchant ID to invoices)
-    const completedInvoices = invoices.filter((inv: any) => inv.status === PaymentStatus.COMPLETED);
-    const activeInvoices = invoices.filter((inv: any) =>
-      inv.status === PaymentStatus.PENDING || inv.status === PaymentStatus.PROCESSING
-    );
-
-    const totalRevenue = completedInvoices.reduce((sum: number, inv: any) =>
-      sum + parseFloat(inv.amount.toString()), 0
-    );
-
+    const stats = await MerchantService.getMerchantStats(walletAddress);
     return {
-      totalInvoices: invoices.length,
-      completedPayments: completedInvoices.length,
-      totalRevenue,
-      activeInvoices: activeInvoices.length
+      totalInvoices: stats.total_invoices,
+      completedPayments: stats.completed_payments,
+      totalRevenue: stats.total_revenue,
+      activeInvoices: stats.active_invoices,
+      pendingInvoices: stats.pending_invoices
     };
   } catch (error) {
+    console.error('Error getting merchant stats:', error);
     return {
       totalInvoices: 0,
       completedPayments: 0,
       totalRevenue: 0,
-      activeInvoices: 0
+      activeInvoices: 0,
+      pendingInvoices: 0
     };
   }
 }
@@ -311,6 +283,5 @@ export function validateWebsite(website: string): { isValid: boolean; error?: st
 
 // Clear all merchant data (for debugging/reset)
 export function clearAllMerchantData(): void {
-  localStorage.removeItem(STORAGE_KEYS.CURRENT_MERCHANT);
-  localStorage.removeItem(STORAGE_KEYS.MERCHANT_PROFILES);
+  currentMerchant = null;
 }

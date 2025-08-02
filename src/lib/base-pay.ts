@@ -30,22 +30,28 @@ export const BASE_PAY_CONFIG = {
     chainId: 8453,
     name: 'Base',
     explorerUrl: 'https://basescan.org',
-    logo: 'https://avatars.githubusercontent.com/u/108554348?s=280&v=4'
+    logo: '/base.JPG'
   },
   testnet: {
     chainId: 84532,
     name: 'Base Sepolia',
     explorerUrl: 'https://sepolia.basescan.org',
-    logo: 'https://avatars.githubusercontent.com/u/108554348?s=280&v=4'
+    logo: '/base.JPG'
   }
 };
 
-// USDC token info (Base Pay only supports USDC)
+// Base network and USDC token info
+export const BASE_NETWORK = {
+  name: 'Base',
+  logo: '/base.JPG', // Local Base logo
+  description: 'Ethereum L2 built by Coinbase'
+};
+
 export const BASE_USDC = {
   symbol: 'USDC',
   name: 'USD Coin',
   decimals: 6,
-  logo: '/usd-coin-usdc-logo.png',
+  logo: '/base.JPG', // Use local Base logo for Base Pay
   description: 'Digital dollar on Base - fast, cheap, no chargebacks'
 };
 

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Copy, Code, ExternalLink, Globe, Smartphone, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Header } from '@/components/Header';
 
 export const MerchantIntegration = () => {
   const { toast } = useToast();
@@ -107,16 +108,18 @@ app.post('/webhook/payment', (req, res) => {
 });`;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-6">
-        
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Merchant Integration Guide</h1>
-          <p className="text-gray-600 text-lg">
-            Learn how to integrate crypto payments into your website or application
-          </p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
+
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Merchant Integration Guide</h1>
+            <p className="text-muted-foreground text-lg">
+              Learn how to integrate crypto payments into your website or application
+            </p>
+          </div>
 
         {/* Integration Methods */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -125,34 +128,34 @@ app.post('/webhook/payment', (req, res) => {
             <CardContent className="p-4">
               <CreditCard className="w-8 h-8 mx-auto mb-2 text-blue-600" />
               <h3 className="font-semibold">Payment Button</h3>
-              <p className="text-sm text-gray-600">Simple link or button</p>
+              <p className="text-sm text-muted-foreground">Simple link or button</p>
             </CardContent>
           </Card>
-          
+
           <Card className="text-center cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => setSelectedIntegration('iframe')}>
             <CardContent className="p-4">
-              <Globe className="w-8 h-8 mx-auto mb-2 text-green-600" />
+              <Globe className="w-8 h-8 mx-auto mb-2 text-green-500" />
               <h3 className="font-semibold">Embedded Form</h3>
-              <p className="text-sm text-gray-600">Iframe integration</p>
+              <p className="text-sm text-muted-foreground">Iframe integration</p>
             </CardContent>
           </Card>
-          
+
           <Card className="text-center cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => setSelectedIntegration('popup')}>
             <CardContent className="p-4">
-              <Smartphone className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+              <Smartphone className="w-8 h-8 mx-auto mb-2 text-purple-500" />
               <h3 className="font-semibold">Popup Modal</h3>
-              <p className="text-sm text-gray-600">JavaScript popup</p>
+              <p className="text-sm text-muted-foreground">JavaScript popup</p>
             </CardContent>
           </Card>
-          
+
           <Card className="text-center cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => setSelectedIntegration('api')}>
             <CardContent className="p-4">
-              <Code className="w-8 h-8 mx-auto mb-2 text-orange-600" />
+              <Code className="w-8 h-8 mx-auto mb-2 text-orange-500" />
               <h3 className="font-semibold">API Integration</h3>
-              <p className="text-sm text-gray-600">Full API control</p>
+              <p className="text-sm text-muted-foreground">Full API control</p>
             </CardContent>
           </Card>
         </div>
@@ -175,20 +178,20 @@ app.post('/webhook/payment', (req, res) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-muted/50 border p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">HTML Code</h4>
+                    <h4 className="font-medium text-foreground">HTML Code</h4>
                     <Button size="sm" variant="outline" onClick={() => copyCode(buttonCode)}>
                       <Copy className="w-4 h-4 mr-1" />
                       Copy
                     </Button>
                   </div>
-                  <pre className="text-sm overflow-x-auto"><code>{buttonCode}</code></pre>
+                  <pre className="text-sm overflow-x-auto text-foreground bg-background/50 p-3 rounded border"><code>{buttonCode}</code></pre>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium">How it works:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Customer clicks the payment button</li>
                     <li>Opens payment page in new tab/window</li>
                     <li>Customer completes payment with their wallet</li>
@@ -208,20 +211,20 @@ app.post('/webhook/payment', (req, res) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-muted/50 border p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">HTML Code</h4>
+                    <h4 className="font-medium text-foreground">HTML Code</h4>
                     <Button size="sm" variant="outline" onClick={() => copyCode(iframeCode)}>
                       <Copy className="w-4 h-4 mr-1" />
                       Copy
                     </Button>
                   </div>
-                  <pre className="text-sm overflow-x-auto"><code>{iframeCode}</code></pre>
+                  <pre className="text-sm overflow-x-auto text-foreground bg-background/50 p-3 rounded border"><code>{iframeCode}</code></pre>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium">Benefits:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Payment form stays on your website</li>
                     <li>Maintains your branding and user experience</li>
                     <li>No redirects or popups needed</li>
@@ -241,20 +244,20 @@ app.post('/webhook/payment', (req, res) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-muted/50 border p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">JavaScript Code</h4>
+                    <h4 className="font-medium text-foreground">JavaScript Code</h4>
                     <Button size="sm" variant="outline" onClick={() => copyCode(jsCode)}>
                       <Copy className="w-4 h-4 mr-1" />
                       Copy
                     </Button>
                   </div>
-                  <pre className="text-sm overflow-x-auto"><code>{jsCode}</code></pre>
+                  <pre className="text-sm overflow-x-auto text-foreground bg-background/50 p-3 rounded border"><code>{jsCode}</code></pre>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium">Features:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Real-time payment status updates</li>
                     <li>Automatic popup closure on completion</li>
                     <li>Custom success/error handling</li>
@@ -274,31 +277,31 @@ app.post('/webhook/payment', (req, res) => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-muted/50 border p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Create Payment API</h4>
+                    <h4 className="font-medium text-foreground">Create Payment API</h4>
                     <Button size="sm" variant="outline" onClick={() => copyCode(apiCode)}>
                       <Copy className="w-4 h-4 mr-1" />
                       Copy
                     </Button>
                   </div>
-                  <pre className="text-sm overflow-x-auto"><code>{apiCode}</code></pre>
+                  <pre className="text-sm overflow-x-auto text-foreground bg-background/50 p-3 rounded border"><code>{apiCode}</code></pre>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-muted/50 border p-4 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium">Webhook Handler</h4>
+                    <h4 className="font-medium text-foreground">Webhook Handler</h4>
                     <Button size="sm" variant="outline" onClick={() => copyCode(webhookCode)}>
                       <Copy className="w-4 h-4 mr-1" />
                       Copy
                     </Button>
                   </div>
-                  <pre className="text-sm overflow-x-auto"><code>{webhookCode}</code></pre>
+                  <pre className="text-sm overflow-x-auto text-foreground bg-background/50 p-3 rounded border"><code>{webhookCode}</code></pre>
                 </div>
                 
                 <div className="space-y-2">
                   <h4 className="font-medium">API Capabilities:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                     <li>Dynamic payment link creation</li>
                     <li>Real-time webhook notifications</li>
                     <li>Multi-network support (Solana + Base)</li>
@@ -319,31 +322,31 @@ app.post('/webhook/payment', (req, res) => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-blue-600 font-bold">1</span>
+                <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-blue-500 font-bold">1</span>
                 </div>
                 <h3 className="font-semibold mb-2">Create Payment Link</h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Use our dashboard to create a payment link with your wallet addresses
                 </p>
               </div>
-              
+
               <div className="text-center">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-green-600 font-bold">2</span>
+                <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-green-500 font-bold">2</span>
                 </div>
                 <h3 className="font-semibold mb-2">Add to Website</h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Copy the code and add it to your website using any method above
                 </p>
               </div>
-              
+
               <div className="text-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-purple-600 font-bold">3</span>
+                <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-purple-500 font-bold">3</span>
                 </div>
                 <h3 className="font-semibold mb-2">Receive Payments</h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Start accepting crypto payments from customers worldwide
                 </p>
               </div>
@@ -362,15 +365,15 @@ app.post('/webhook/payment', (req, res) => {
                 <img src="/solana-sol-logo.png" alt="Solana" className="w-8 h-8" />
                 <div>
                   <h4 className="font-semibold">Solana</h4>
-                  <p className="text-sm text-gray-600">SOL, USDC, USDT and more</p>
+                  <p className="text-sm text-muted-foreground">SOL, USDC, USDT and more</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 p-3 border rounded-lg">
-                <img src="/usd-coin-usdc-logo.png" alt="Base" className="w-8 h-8" />
+                <img src="/base.JPG" alt="Base" className="w-8 h-8" />
                 <div>
                   <h4 className="font-semibold">Base</h4>
-                  <p className="text-sm text-gray-600">USDC on Base network</p>
+                  <p className="text-sm text-muted-foreground">USDC on Base network</p>
                 </div>
               </div>
             </div>
@@ -382,6 +385,7 @@ app.post('/webhook/payment', (req, res) => {
           <Button size="lg" onClick={() => window.location.href = '/'}>
             Create Your First Payment Link
           </Button>
+        </div>
         </div>
       </div>
     </div>

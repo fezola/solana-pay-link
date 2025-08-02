@@ -34,7 +34,7 @@ export const SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     name: 'solana',
     displayName: 'Solana',
     symbol: 'SOL',
-    logo: 'https://cryptologos.cc/logos/solana-sol-logo.png',
+    logo: '/solana-sol-logo.png',
     rpcUrl: 'https://api.mainnet-beta.solana.com',
     blockExplorer: 'https://solscan.io',
     nativeCurrency: {
@@ -48,7 +48,7 @@ export const SUPPORTED_CHAINS: Record<string, ChainConfig> = {
         name: 'Solana',
         address: 'native',
         decimals: 9,
-        logo: 'https://cryptologos.cc/logos/solana-sol-logo.png',
+        logo: '/solana-sol-logo.png',
         isNative: true,
         coingeckoId: 'solana'
       },

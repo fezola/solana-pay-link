@@ -1,13 +1,33 @@
 import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ExternalLink, Search, Filter, RefreshCw, TrendingUp, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Header } from '@/components/Header';
 import { getInvoices, PaymentStatus, formatAmount } from '@/lib/payment-utils';
+
+// Chain Icons using actual logos
+const SolanaIcon = () => (
+  <img
+    src="/solana-sol-logo.png"
+    alt="Solana"
+    className="w-4 h-4 object-contain"
+  />
+);
+
+const BaseIcon = () => (
+  <img
+    src="/base.JPG"
+    alt="Base"
+    className="w-4 h-4 object-contain rounded-sm"
+  />
+);
 
 interface Transaction {
   id: string;
@@ -27,6 +47,7 @@ interface Transaction {
 
 export const Transactions = () => {
   const { toast } = useToast();
+  const { connected, publicKey } = useWallet();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'all'>('all');
@@ -43,19 +64,29 @@ export const Transactions = () => {
       // Load invoices and convert to transactions format
       const invoices = getInvoices();
       const txs: Transaction[] = invoices.map(invoice => {
-        const network = invoice.recipient.startsWith('0x') ? 'base' : 'solana';
-        const blockExplorer = network === 'solana' 
+        // Convert PublicKey to string for recipient
+        const recipientStr = typeof invoice.recipient === 'string'
+          ? invoice.recipient
+          : invoice.recipient.toString();
+
+        const network = recipientStr.startsWith('0x') ? 'base' : 'solana';
+        const blockExplorer = network === 'solana'
           ? 'https://explorer.solana.com'
           : 'https://basescan.org';
-        
+
+        // Convert BigNumber to string for amount
+        const amountStr = typeof invoice.amount === 'string'
+          ? invoice.amount
+          : invoice.amount.toString();
+
         return {
           id: `tx_${invoice.id}`,
           invoiceId: invoice.id,
           title: invoice.title,
-          amount: invoice.amount,
+          amount: amountStr,
           token: invoice.token,
           network,
-          recipient: invoice.recipient,
+          recipient: recipientStr,
           status: invoice.status,
           transactionHash: invoice.status === 'completed' ? generateMockTxHash(network) : undefined,
           createdAt: invoice.createdAt,
@@ -108,16 +139,22 @@ export const Transactions = () => {
 
   const getStatusColor = (status: PaymentStatus) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'expired': return 'bg-red-100 text-red-800';
-      case 'cancelled': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'expired': return 'bg-red-500/10 text-red-500 border-red-500/20';
+      case 'cancelled': return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+      default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
     }
   };
 
   const getNetworkColor = (network: string) => {
-    return network === 'solana' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+    return network === 'solana'
+      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+      : 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+  };
+
+  const getNetworkIcon = (network: string) => {
+    return network === 'solana' ? <SolanaIcon /> : <BaseIcon />;
   };
 
   const totalVolume = transactions
@@ -128,24 +165,26 @@ export const Transactions = () => {
   const pendingCount = transactions.filter(tx => tx.status === 'pending').length;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-6">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-            <p className="text-gray-600 mt-1">Monitor and track all payment transactions</p>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
+
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Transactions</h1>
+              <p className="text-muted-foreground mt-1">Monitor and track all payment transactions</p>
+            </div>
+            <Button
+              onClick={loadTransactions}
+              disabled={isLoading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          <Button 
-            onClick={loadTransactions} 
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -165,34 +204,34 @@ export const Transactions = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="text-2xl font-bold text-green-500">{completedCount}</p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-green-600" />
+                <TrendingUp className="w-8 h-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-500">{pendingCount}</p>
                 </div>
-                <RefreshCw className="w-8 h-8 text-yellow-600" />
+                <RefreshCw className="w-8 h-8 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-2xl font-bold">{transactions.length}</p>
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold text-foreground">{transactions.length}</p>
                 </div>
-                <ExternalLink className="w-8 h-8 text-blue-600" />
+                <ExternalLink className="w-8 h-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -205,7 +244,7 @@ export const Transactions = () => {
               <div className="space-y-2">
                 <Label htmlFor="search">Search</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     id="search"
                     placeholder="Search transactions..."
@@ -218,30 +257,62 @@ export const Transactions = () => {
               
               <div className="space-y-2">
                 <Label>Status</Label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as PaymentStatus | 'all')}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="expired">Expired</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as PaymentStatus | 'all')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                        Pending
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="completed">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Completed
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="expired">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        Expired
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cancelled">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                        Cancelled
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
                 <Label>Network</Label>
-                <select
-                  value={networkFilter}
-                  onChange={(e) => setNetworkFilter(e.target.value as 'all' | 'solana' | 'base')}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="all">All Networks</option>
-                  <option value="solana">Solana</option>
-                  <option value="base">Base</option>
-                </select>
+                <Select value={networkFilter} onValueChange={(value) => setNetworkFilter(value as 'all' | 'solana' | 'base')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Networks</SelectItem>
+                    <SelectItem value="solana">
+                      <div className="flex items-center gap-2">
+                        <SolanaIcon />
+                        Solana
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="base">
+                      <div className="flex items-center gap-2">
+                        <BaseIcon />
+                        Base
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -257,12 +328,31 @@ export const Transactions = () => {
 
         {/* Transactions List */}
         <div className="space-y-4">
-          {filteredTransactions.length === 0 ? (
+          {isLoading ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <div className="text-gray-500">
+                <div className="text-muted-foreground">
+                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p>Loading transactions...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : !connected ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="text-muted-foreground">
                   <ExternalLink className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">No transactions found</h3>
+                  <h3 className="text-lg font-medium mb-2 text-foreground">Connect Your Wallet</h3>
+                  <p>Please connect your wallet to view your transactions</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : filteredTransactions.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <div className="text-muted-foreground">
+                  <ExternalLink className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2 text-foreground">No transactions found</h3>
                   <p>Transactions will appear here once payments are made</p>
                 </div>
               </CardContent>
@@ -279,34 +369,37 @@ export const Transactions = () => {
                           {tx.status}
                         </Badge>
                         <Badge className={getNetworkColor(tx.network)}>
-                          {tx.network}
+                          <div className="flex items-center gap-1">
+                            {getNetworkIcon(tx.network)}
+                            {tx.network}
+                          </div>
                         </Badge>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                         <div>
-                          <span className="text-gray-500">Amount:</span>
-                          <div className="font-medium">{formatAmount(tx.amount)} {tx.token}</div>
+                          <span className="text-muted-foreground">Amount:</span>
+                          <div className="font-medium text-foreground">{formatAmount(tx.amount)} {tx.token}</div>
                         </div>
                         <div>
-                          <span className="text-gray-500">Created:</span>
-                          <div className="font-medium">{tx.createdAt.toLocaleDateString()}</div>
+                          <span className="text-muted-foreground">Created:</span>
+                          <div className="font-medium text-foreground">{tx.createdAt.toLocaleDateString()}</div>
                         </div>
                         <div>
-                          <span className="text-gray-500">Completed:</span>
-                          <div className="font-medium">
+                          <span className="text-muted-foreground">Completed:</span>
+                          <div className="font-medium text-foreground">
                             {tx.completedAt ? tx.completedAt.toLocaleDateString() : '-'}
                           </div>
                         </div>
                         <div>
-                          <span className="text-gray-500">Recipient:</span>
-                          <div className="font-medium font-mono text-xs">
+                          <span className="text-muted-foreground">Recipient:</span>
+                          <div className="font-medium font-mono text-xs text-foreground">
                             {tx.recipient.slice(0, 8)}...{tx.recipient.slice(-6)}
                           </div>
                         </div>
                         <div>
-                          <span className="text-gray-500">Tx Hash:</span>
-                          <div className="font-medium font-mono text-xs">
+                          <span className="text-muted-foreground">Tx Hash:</span>
+                          <div className="font-medium font-mono text-xs text-foreground">
                             {tx.transactionHash ? 
                               `${tx.transactionHash.slice(0, 8)}...${tx.transactionHash.slice(-6)}` : 
                               '-'
@@ -334,6 +427,7 @@ export const Transactions = () => {
               </Card>
             ))
           )}
+        </div>
         </div>
       </div>
     </div>

@@ -10,20 +10,20 @@ const DEMO_MERCHANT_CONFIG = {
   description: 'Supporting my coding journey, one coffee at a time! Building awesome Solana dApps and sharing knowledge with the community.'
 };
 
-// Setup demo merchant account
-export function setupDemoMerchant(): void {
+// Setup demo merchant account (async)
+export async function setupDemoMerchant(): Promise<void> {
   try {
     const walletAddress = new PublicKey(DEMO_MERCHANT_CONFIG.walletAddress);
-    
+
     // Check if merchant already exists
-    const existingMerchant = getMerchantByWallet(walletAddress);
+    const existingMerchant = await getMerchantByWallet(walletAddress);
     if (existingMerchant) {
       console.log('Demo merchant already exists:', existingMerchant.businessName);
       return;
     }
 
     // Register new demo merchant
-    const merchant = registerMerchant({
+    const merchant = await registerMerchant({
       walletAddress,
       businessName: DEMO_MERCHANT_CONFIG.businessName,
       email: DEMO_MERCHANT_CONFIG.email,
@@ -32,10 +32,10 @@ export function setupDemoMerchant(): void {
     });
 
     console.log('Demo merchant created:', merchant.businessName);
-    
+
     // Add some demo webhook configuration
-    const { updateMerchantSettings } = require('./merchant-auth');
-    updateMerchantSettings(merchant.id, {
+    const { updateMerchantSettings } = await import('./merchant-auth');
+    await updateMerchantSettings(walletAddress, {
       webhookUrl: 'https://webhook.site/your-unique-url',
       defaultCurrency: 'USDC',
       paymentExpiration: 30,

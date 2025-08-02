@@ -1,5 +1,6 @@
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import { Wallet, Zap, Coffee, ExternalLink, ShoppingBag } from 'lucide-react';
 
 export const Header = () => {
@@ -20,18 +21,18 @@ export const Header = () => {
         
         <div className="flex items-center gap-4">
           <nav className="hidden md:flex items-center gap-6">
-            <a href="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            <Link to="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Dashboard
-            </a>
-            <a href="/payment-links" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link to="/payment-links" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Payment Links
-            </a>
-            <a href="/transactions" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link to="/transactions" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Transactions
-            </a>
-            <a href="/integration" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link to="/integration" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               Integration
-            </a>
+            </Link>
           </nav>
 
           <div className="hidden sm:flex gap-2">
