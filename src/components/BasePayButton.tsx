@@ -37,7 +37,7 @@ export const BasePayButton = ({
 
       if (baseModule.createBaseAccountSDK) {
         const baseSDK = baseModule.createBaseAccountSDK({
-          appName: 'Solana Pay Link',
+          appName: 'Kylr',
           appLogo: '/base.JPG'
         });
 

@@ -256,7 +256,7 @@ export const MerchantAuth = ({ onAuthSuccess }: MerchantAuthProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="h-5 w-5 text-primary" />
-          {isRegistering ? 'Register Merchant Account' : 'Welcome to SolPay'}
+          {isRegistering ? 'Register Merchant Account' : 'Welcome to Kylr'}
         </CardTitle>
         <CardDescription>
           {isRegistering 

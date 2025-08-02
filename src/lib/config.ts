@@ -8,7 +8,7 @@ export const SUPABASE_CONFIG = {
 
 // App configuration
 export const APP_CONFIG = {
-  name: 'Solana Pay Link',
+  name: 'Kylr',
   url: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
   solanaNetwork: 'devnet',
   solanaRpcUrl: 'https://api.devnet.solana.com'

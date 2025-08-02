@@ -130,8 +130,8 @@ export function generatePaymentURL(invoice: Invoice): string {
 
 // Local storage keys
 const STORAGE_KEYS = {
-  INVOICES: 'solpay_invoices',
-  MERCHANT_CONFIG: 'solpay_merchant_config'
+  INVOICES: 'kylr_invoices',
+  MERCHANT_CONFIG: 'kylr_merchant_config'
 };
 
 // Save invoice to local storage

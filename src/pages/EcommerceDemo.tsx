@@ -387,6 +387,28 @@ export const EcommerceDemo = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
 
+                    {/* Solana Pay Option */}
+                    <div className="p-4 border-2 border-teal-200 rounded-lg bg-teal-50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <img
+                          src="/solana-sol-logo.png"
+                          alt="Solana"
+                          className="w-8 h-8"
+                        />
+                        <div>
+                          <h3 className="font-semibold text-teal-900">Solana Pay</h3>
+                          <p className="text-sm text-teal-700">SOL or USDC on Solana</p>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleSolanaPayment}
+                        className="w-full bg-teal-600 hover:bg-teal-700"
+                      >
+                        Pay with Solana
+                      </Button>
+                    </div>
+
                     {/* Base Pay Option */}
                     <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
                       <div className="flex items-center gap-3 mb-3">
@@ -415,28 +437,6 @@ export const EcommerceDemo = () => {
                           setShowCheckout(false);
                         }}
                       />
-                    </div>
-
-                    {/* Solana Pay Option */}
-                    <div className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50">
-                      <div className="flex items-center gap-3 mb-3">
-                        <img
-                          src="/solana-sol-logo.png"
-                          alt="Solana"
-                          className="w-8 h-8"
-                        />
-                        <div>
-                          <h3 className="font-semibold text-purple-900">Solana Pay</h3>
-                          <p className="text-sm text-purple-700">SOL or USDC on Solana</p>
-                        </div>
-                      </div>
-
-                      <Button
-                        onClick={handleSolanaPayment}
-                        className="w-full bg-purple-600 hover:bg-purple-700"
-                      >
-                        Pay with Solana
-                      </Button>
                     </div>
 
                   </CardContent>

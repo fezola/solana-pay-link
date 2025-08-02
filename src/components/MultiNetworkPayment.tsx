@@ -166,9 +166,9 @@ export const MultiNetworkPayment = ({ invoice, onPaymentComplete }: MultiNetwork
 
                   {/* Action Buttons */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Button 
+                    <Button
                       onClick={() => openInWallet('solana')}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-teal-600 hover:bg-teal-700"
                     >
                       <Wallet className="w-4 h-4 mr-2" />
                       Open in Wallet

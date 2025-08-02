@@ -368,14 +368,14 @@ export const UnifiedCheckout = ({
                 )}
               </div>
 
-              {/* SolPay Branding */}
+              {/* Kylr Branding */}
               <div className="mt-12 pt-8 border-t border-gray-200">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-blue-600 rounded-xl flex items-center justify-center">
                     <Zap className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Powered by SolPay</h3>
+                    <h3 className="font-semibold text-gray-900">Powered by Kylr</h3>
                     <p className="text-sm text-gray-600">Decentralized payment platform</p>
                   </div>
                 </div>

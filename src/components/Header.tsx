@@ -16,7 +16,7 @@ export const Header = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold bg-gradient-solana bg-clip-text text-transparent">
-              SolPay
+              Kylr
             </h1>
             <p className="text-xs text-muted-foreground">Decentralized Payments</p>
           </div>
