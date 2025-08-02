@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ExternalLink, Search, Filter, RefreshCw, TrendingUp, DollarSign } from 'lucide-react';
+import { ExternalLink, Search, Filter, RefreshCw, TrendingUp, DollarSign, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
-import { getInvoices, PaymentStatus, formatAmount } from '@/lib/payment-utils';
+import { getInvoices, PaymentStatus, formatAmount, clearAllInvoices } from '@/lib/payment-utils';
 
 // Chain Icons using actual logos
 const SolanaIcon = () => (
@@ -157,6 +157,17 @@ export const Transactions = () => {
     return network === 'solana' ? <SolanaIcon /> : <BaseIcon />;
   };
 
+  const clearAllTransactions = () => {
+    if (window.confirm('Are you sure you want to clear all transactions? This action cannot be undone.')) {
+      clearAllInvoices();
+      setTransactions([]);
+      toast({
+        title: "Cleared!",
+        description: "All transactions have been cleared",
+      });
+    }
+  };
+
   const totalVolume = transactions
     .filter(tx => tx.status === 'completed')
     .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
@@ -176,14 +187,25 @@ export const Transactions = () => {
               <h1 className="text-3xl font-bold text-foreground">Transactions</h1>
               <p className="text-muted-foreground mt-1">Monitor and track all payment transactions</p>
             </div>
-            <Button
-              onClick={loadTransactions}
-              disabled={isLoading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={loadTransactions}
+                disabled={isLoading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button
+                onClick={clearAllTransactions}
+                variant="destructive"
+                disabled={isLoading || transactions.length === 0}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All
+              </Button>
+            </div>
           </div>
 
         {/* Stats Cards */}

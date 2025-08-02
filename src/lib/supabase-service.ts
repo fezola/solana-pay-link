@@ -110,8 +110,8 @@ export class MerchantService {
   }
 
   static async getMerchantStats(walletAddress: PublicKey | string) {
-    const walletAddressStr = typeof walletAddress === 'string' 
-      ? walletAddress 
+    const walletAddressStr = typeof walletAddress === 'string'
+      ? walletAddress
       : walletAddress.toString()
 
     const { data, error } = await supabase
@@ -127,6 +127,85 @@ export class MerchantService {
       total_revenue: 0,
       active_invoices: 0,
       pending_invoices: 0
+    }
+  }
+
+  // Get all clients/companies that have made payments to this merchant
+  static async getMerchantClients(walletAddress: PublicKey | string) {
+    const walletAddressStr = typeof walletAddress === 'string'
+      ? walletAddress
+      : walletAddress.toString()
+
+    try {
+      // Get merchant first
+      const merchant = await this.getMerchantByWallet(walletAddressStr)
+      if (!merchant) {
+        return []
+      }
+
+      // Get all unique payer addresses from completed transactions
+      const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+          payer_address,
+          amount,
+          token_symbol,
+          created_at,
+          invoices!inner(
+            merchant_id,
+            title,
+            description
+          )
+        `)
+        .eq('invoices.merchant_id', merchant.id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.warn('Error fetching client data from Supabase:', error)
+        return []
+      }
+
+      // Group by payer address to get client statistics
+      const clientMap = new Map()
+
+      data?.forEach(tx => {
+        const payerAddress = tx.payer_address
+        if (!clientMap.has(payerAddress)) {
+          clientMap.set(payerAddress, {
+            address: payerAddress,
+            totalPayments: 0,
+            totalVolume: 0,
+            lastPayment: tx.created_at,
+            firstPayment: tx.created_at,
+            transactions: []
+          })
+        }
+
+        const client = clientMap.get(payerAddress)
+        client.totalPayments += 1
+        client.totalVolume += parseFloat(tx.amount)
+        client.transactions.push({
+          amount: tx.amount,
+          token: tx.token_symbol,
+          date: tx.created_at,
+          title: tx.invoices?.title,
+          description: tx.invoices?.description
+        })
+
+        // Update date ranges
+        if (new Date(tx.created_at) > new Date(client.lastPayment)) {
+          client.lastPayment = tx.created_at
+        }
+        if (new Date(tx.created_at) < new Date(client.firstPayment)) {
+          client.firstPayment = tx.created_at
+        }
+      })
+
+      return Array.from(clientMap.values()).sort((a, b) => b.totalVolume - a.totalVolume)
+    } catch (error) {
+      console.warn('Error fetching merchant clients:', error)
+      return []
     }
   }
 }

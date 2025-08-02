@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, ExternalLink, Search, Filter, Plus, Eye, Trash2, Zap } from 'lucide-react';
+import { Copy, ExternalLink, Search, Filter, Plus, Eye, Trash2, Zap, Building2, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { PaymentLinkService } from '@/lib/supabase-service';
@@ -55,10 +55,28 @@ export const PaymentLinks = () => {
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'all'>('all');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'solana' | 'base'>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(true); // Default to true to avoid flash
 
   useEffect(() => {
-    loadPaymentLinks();
+    if (connected && publicKey) {
+      checkBusinessRegistration();
+    }
   }, [connected, publicKey]);
+
+  const checkBusinessRegistration = async () => {
+    if (!publicKey) return;
+
+    try {
+      const merchant = await getCurrentMerchant(publicKey);
+      setIsRegistered(!!merchant);
+      if (merchant) {
+        loadPaymentLinks();
+      }
+    } catch (error) {
+      console.warn('Error checking business registration:', error);
+      setIsRegistered(false);
+    }
+  };
 
   const loadPaymentLinks = async () => {
     setIsLoading(true);
@@ -170,11 +188,41 @@ export const PaymentLinks = () => {
             <h1 className="text-3xl font-bold text-foreground">Payment Links</h1>
             <p className="text-muted-foreground mt-1">Manage and track your payment links</p>
           </div>
-          <Button onClick={() => navigate('/')} className="flex items-center gap-2">
+          <Button
+            onClick={() => navigate('/')}
+            disabled={!isRegistered}
+            className="flex items-center gap-2"
+          >
             <Plus className="w-4 h-4" />
             Create New Link
           </Button>
         </div>
+
+        {/* Business Registration Check */}
+        {connected && !isRegistered && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Business Registration Required</h3>
+                  <p className="text-muted-foreground">
+                    You need to register your business before creating payment links. This helps us provide better service and analytics.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => navigate('/')}
+                  className="flex items-center gap-2"
+                >
+                  Register Business
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <Card>

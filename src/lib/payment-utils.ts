@@ -242,6 +242,11 @@ export function updateInvoiceStatus(
   }
 }
 
+// Clear all invoices/transactions
+export function clearAllInvoices(): void {
+  localStorage.removeItem(STORAGE_KEYS.INVOICES);
+}
+
 // Get invoices with filters
 export function getInvoices(filters?: {
   status?: PaymentStatus;
