@@ -44,14 +44,14 @@ export const SPL_TOKENS = {
     decimals: 9,
     symbol: 'SOL',
     name: 'Solana',
-    logo: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+    logo: '/solana-sol-logo.png'
   },
   USDC: {
     mint: new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'), // USDC devnet (original)
     decimals: 6,
     symbol: 'USDC',
     name: 'USD Coin (Devnet)',
-    logo: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
+    logo: '/usd-coin-usdc-logo.png'
   },
   USDT: {
     mint: new PublicKey('EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS'), // USDT devnet

@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import { Checkout } from "./pages/Checkout";
 import { BuyMeCoffee } from "./pages/BuyMeCoffee";
 import { EcommerceDemo } from "./pages/EcommerceDemo";
+import { MultiChainDemo } from "./pages/MultiChainDemo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/coffee" element={<BuyMeCoffee />} />
               <Route path="/shop" element={<EcommerceDemo />} />
+              <Route path="/multichain" element={<MultiChainDemo />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

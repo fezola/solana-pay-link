@@ -17,6 +17,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { MultiCurrencyCheckout } from './MultiCurrencyCheckout';
+import { MultiChainCheckout } from './MultiChainCheckout';
+import { MultiChainPaymentOption } from '@/lib/multi-chain-utils';
+import { walletManager } from '@/lib/multi-chain-wallets';
 import { 
   createInvoice, 
   saveInvoice,
@@ -59,15 +62,23 @@ export const UnifiedCheckout = ({
 
   const [selectedCurrency, setSelectedCurrency] = useState<string>('USDC');
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
+  const [selectedPaymentOption, setSelectedPaymentOption] = useState<MultiChainPaymentOption | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'select' | 'confirm' | 'processing' | 'success' | 'error'>('select');
   const [transactionSignature, setTransactionSignature] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [useMultiChain, setUseMultiChain] = useState(true); // Toggle between old and new system
 
   const handleCurrencySelect = (currency: string, amount: number) => {
     setSelectedCurrency(currency);
     setSelectedAmount(amount);
+  };
+
+  const handleMultiChainPaymentSelect = (option: MultiChainPaymentOption) => {
+    setSelectedPaymentOption(option);
+    setSelectedCurrency(option.token);
+    setSelectedAmount(option.amount);
   };
 
   const handleProceedToPayment = () => {
@@ -198,38 +209,39 @@ export const UnifiedCheckout = ({
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                onClick={onBack}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <div className="h-6 w-px bg-gray-300"></div>
-              <div className="flex items-center gap-3">
-                <img
-                  src={storeInfo.logo}
-                  alt={storeInfo.name}
-                  className="w-8 h-8 rounded-lg object-cover"
-                />
-                <span className="font-semibold text-gray-900">{storeInfo.name}</span>
+    <>
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="border-b border-gray-200 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  onClick={onBack}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <div className="h-6 w-px bg-gray-300"></div>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={storeInfo.logo}
+                    alt={storeInfo.name}
+                    className="w-8 h-8 rounded-lg object-cover"
+                  />
+                  <span className="font-semibold text-gray-900">{storeInfo.name}</span>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Shield className="h-4 w-4 text-green-500" />
-              <span>Secure checkout</span>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Shield className="h-4 w-4 text-green-500" />
+                <span>Secure checkout</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -291,28 +303,68 @@ export const UnifiedCheckout = ({
 
               {/* Payment Method Section */}
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">Payment method</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">Payment method</h2>
 
-                {!connected ? (
-                  <div className="space-y-6">
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <CreditCard className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Connect your wallet</h3>
-                      <p className="text-gray-600 mb-6">
-                        Connect your Solana wallet to proceed with payment
-                      </p>
-                      <WalletMultiButton className="!bg-blue-600 !hover:bg-blue-700 !rounded-xl !px-8 !py-3 !font-semibold" />
+                  {/* Multi-Chain Toggle */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600">Payment System:</span>
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setUseMultiChain(false)}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                          !useMultiChain
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Solana Only
+                      </button>
+                      <button
+                        onClick={() => setUseMultiChain(true)}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                          useMultiChain
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Multi-Chain
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  <MultiCurrencyCheckout
+                </div>
+
+                {useMultiChain ? (
+                  // New Multi-Chain System
+                  <MultiChainCheckout
                     usdTotal={cartTotal}
-                    onCurrencySelect={handleCurrencySelect}
+                    onPaymentSelect={handleMultiChainPaymentSelect}
                     onProceedToPayment={handleProceedToPayment}
                     isProcessing={isProcessing}
                   />
+                ) : (
+                  // Original Solana-only System
+                  !connected ? (
+                    <div className="space-y-6">
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <CreditCard className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Connect your wallet</h3>
+                        <p className="text-gray-600 mb-6">
+                          Connect your Solana wallet to proceed with payment
+                        </p>
+                        <WalletMultiButton className="!bg-blue-600 !hover:bg-blue-700 !rounded-xl !px-8 !py-3 !font-semibold" />
+                      </div>
+                    </div>
+                  ) : (
+                    <MultiCurrencyCheckout
+                      usdTotal={cartTotal}
+                      onCurrencySelect={handleCurrencySelect}
+                      onProceedToPayment={handleProceedToPayment}
+                      isProcessing={isProcessing}
+                    />
+                  )
                 )}
               </div>
 
@@ -430,7 +482,6 @@ export const UnifiedCheckout = ({
               </div>
             </div>
           </div>
-          </div>
         </div>
       </div>
 
@@ -523,6 +574,7 @@ export const UnifiedCheckout = ({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 };

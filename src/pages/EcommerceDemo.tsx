@@ -14,7 +14,8 @@ import {
   Plus,
   Minus,
   CreditCard,
-  CheckCircle
+  CheckCircle,
+  Globe
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -23,9 +24,10 @@ import {
   saveInvoice,
   SPL_TOKENS
 } from '@/lib/payment-utils';
-import { UnifiedCheckout } from '@/components/UnifiedCheckout';
-import { TokenDebug } from '@/components/TokenDebug';
+// Removed broken imports that were causing issues
+
 import { calculateCartTotal } from '@/lib/currency-utils';
+import { OfficialBasePayButton } from '@/components/BasePayButton';
 
 // Mock product data - All prices in USD, store accepts multiple currencies
 // REDUCED PRICES FOR DEVNET TESTING
@@ -174,6 +176,40 @@ export const EcommerceDemo = () => {
     setPaymentSuccess(false);
   };
 
+  const handleSolanaPayment = () => {
+    try {
+      const cartTotal = getCartTotal();
+
+      // Create order description
+      const orderItems = cart.map(item => `${item.quantity}x ${item.product.name}`).join(', ');
+      const orderDescription = `Shop Order: ${orderItems}`;
+
+      // Create Solana payment invoice
+      const invoice = createInvoice({
+        recipient: STORE_INFO.walletAddress,
+        amount: cartTotal.toString(),
+        token: 'USDC', // Default to USDC for shop payments
+        title: `${STORE_INFO.name} - Order Payment`,
+        description: orderDescription,
+        expiresIn: 30 // 30 minutes
+      });
+
+      // Save the invoice
+      saveInvoice(invoice);
+
+      // Redirect to checkout with the invoice ID
+      window.location.href = `/checkout?invoice=${invoice.id}`;
+
+    } catch (error) {
+      console.error('Error creating Solana payment:', error);
+      toast({
+        title: "Payment Error",
+        description: "Could not create Solana payment",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handlePaymentSuccess = () => {
     setPaymentSuccess(true);
     setShowCheckout(false);
@@ -292,18 +328,166 @@ export const EcommerceDemo = () => {
     );
   }
 
-  // Unified checkout view
+  // Checkout view with Base Pay
   if (showCheckout) {
+    const cartTotal = getCartTotal();
+
     return (
-      <UnifiedCheckout
-        storeInfo={STORE_INFO}
-        cartItems={cart}
-        cartTotal={getCartTotal()}
-        onBack={handleBackToCart}
-        onSuccess={handlePaymentSuccess}
-      />
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Checkout</h1>
+                <p className="text-gray-600">Complete your purchase</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleBackToCart}
+                className="flex items-center gap-2"
+              >
+                ← Back to Cart
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+              {/* Payment Options */}
+              <div>
+                <Card className="shadow-lg border-0">
+                  <CardHeader>
+                    <CardTitle>Payment Options</CardTitle>
+                    <CardDescription>
+                      Choose your preferred payment method
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+
+                    {/* Base Pay Option */}
+                    <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <img
+                          src="/usd-coin-usdc-logo.png"
+                          alt="USDC"
+                          className="w-8 h-8"
+                        />
+                        <div>
+                          <h3 className="font-semibold text-blue-900">Base Pay - USDC</h3>
+                          <p className="text-sm text-blue-700">Fast, secure, no gas fees</p>
+                        </div>
+                      </div>
+
+                      <OfficialBasePayButton
+                        amount={cartTotal.toString()}
+                        to="0x4c4838D1CBeA08ad2288C5630d1953C12e32886b" // Store's Base address (testnet)
+                        testnet={true}
+                        colorScheme="light"
+                        onPaymentComplete={() => {
+                          toast({
+                            title: "Payment Successful!",
+                            description: "Your order has been processed",
+                          });
+                          setCart([]);
+                          setShowCheckout(false);
+                        }}
+                      />
+                    </div>
+
+                    {/* Solana Pay Option */}
+                    <div className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <img
+                          src="/solana-sol-logo.png"
+                          alt="Solana"
+                          className="w-8 h-8"
+                        />
+                        <div>
+                          <h3 className="font-semibold text-purple-900">Solana Pay</h3>
+                          <p className="text-sm text-purple-700">SOL or USDC on Solana</p>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={handleSolanaPayment}
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                      >
+                        Pay with Solana
+                      </Button>
+                    </div>
+
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Order Summary */}
+              <div>
+                <Card className="shadow-lg border-0 sticky top-4">
+                  <CardHeader>
+                    <CardTitle>Order Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+
+                    {/* Cart Items */}
+                    <div className="space-y-3">
+                      {cart.map((item) => (
+                        <div key={item.product.id} className="flex items-center gap-3">
+                          <img
+                            src={item.product.image}
+                            alt={item.product.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{item.product.name}</h4>
+                            <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
+                          </div>
+                          <div className="text-sm font-medium">
+                            ${(item.product.price * item.quantity).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator />
+
+                    {/* Total */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span>${cartTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Shipping:</span>
+                        <span>Free</span>
+                      </div>
+                      <div className="flex justify-between font-medium text-lg border-t pt-2">
+                        <span>Total:</span>
+                        <span>${cartTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {/* Store Info */}
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Store Information</h4>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p><strong>Store:</strong> {STORE_INFO.name}</p>
+                        <p><strong>Contact:</strong> {STORE_INFO.email}</p>
+                        <p><strong>Accepts:</strong> USDC (Base), SOL/USDC (Solana)</p>
+                      </div>
+                    </div>
+
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
+
+  // Removed the custom Solana payment view - using existing checkout system instead
 
   // Main store view
   return (
@@ -427,9 +611,6 @@ export const EcommerceDemo = () => {
 
           {/* Cart Sidebar */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Debug Info */}
-            <TokenDebug />
-
             <Card className="shadow-card sticky top-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

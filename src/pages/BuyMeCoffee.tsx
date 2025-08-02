@@ -26,6 +26,15 @@ import {
 import { setupDemoMerchant } from '@/lib/demo-setup';
 import { NetworkDebug } from '@/components/NetworkDebug';
 import { USDCFaucet } from '@/components/USDCFaucet';
+import {
+  createBasePayment,
+  getBasePaymentStatus,
+  BASE_USDC,
+  BASE_PAY_CONFIG,
+  formatBaseAddress,
+  createBasePayButtonData
+} from '@/lib/base-pay';
+import { BasePayButton, OfficialBasePayButton } from '@/components/BasePayButton';
 import QRCodeLib from 'qrcode';
 
 // Mock merchant data - in a real app this would come from a database
@@ -33,7 +42,10 @@ const MERCHANT_DATA = {
   id: 'coffee_merchant_001',
   name: 'Alex\'s Coffee Corner',
   description: 'Supporting my coding journey, one coffee at a time! ☕',
-  walletAddress: 'HH6V2MRkEbVaYwsas3YrxuhKFKWW1wvp6kbX51SA8UoU',
+  walletAddress: 'HH6V2MRkEbVaYwsas3YrxuhKFKWW1wvp6kbX51SA8UoU', // Solana
+  baseWalletAddress: '0x4c4838D1CBeA08ad2288C5630d1953C12e32886b', // Base network (testnet)
+
+
   avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
   coverImage: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=300&fit=crop',
   totalSupported: 127,
@@ -66,6 +78,12 @@ export const BuyMeCoffee = () => {
   const [invoiceId, setInvoiceId] = useState<string>('');
   const [qrCode, setQrCode] = useState<string>('');
   const [showPayment, setShowPayment] = useState(false);
+
+  // Payment network selection
+  const [selectedNetwork, setSelectedNetwork] = useState<'solana' | 'base'>('solana');
+  const [basePaymentId, setBasePaymentId] = useState<string>('');
+  const [basePaymentStatus, setBasePaymentStatus] = useState<'pending' | 'completed' | 'failed' | null>(null);
+
 
   // Check if we're in payment mode and setup demo merchant
   useEffect(() => {
@@ -103,7 +121,7 @@ export const BuyMeCoffee = () => {
 
   const generatePayment = async () => {
     const finalAmount = selectedAmount || parseFloat(customAmount);
-    
+
     if (!finalAmount || finalAmount <= 0) {
       toast({
         title: "Invalid Amount",
@@ -116,40 +134,47 @@ export const BuyMeCoffee = () => {
     setIsGenerating(true);
 
     try {
-      // Create invoice
-      const invoice = createInvoice({
-        recipient: MERCHANT_DATA.walletAddress,
-        amount: finalAmount.toString(),
-        token: selectedToken,
-        title: `${supporterName || 'Anonymous'} - Coffee Support`,
-        description: message || `Supporting ${MERCHANT_DATA.name}`,
-        expiresIn: 30 // 30 minutes
-      });
+      if (selectedNetwork === 'solana') {
+        // Solana payment flow
+        const invoice = createInvoice({
+          recipient: MERCHANT_DATA.walletAddress,
+          amount: finalAmount.toString(),
+          token: selectedToken,
+          title: `${supporterName || 'Anonymous'} - Coffee Support`,
+          description: message || `Supporting ${MERCHANT_DATA.name}`,
+          expiresIn: 30 // 30 minutes
+        });
 
-      // Generate payment URL
-      const url = generatePaymentURL(invoice);
-      
-      // Generate QR code
-      const qrCodeData = await QRCodeLib.toDataURL(url, {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+        // Generate payment URL
+        const url = generatePaymentURL(invoice);
 
-      // Save invoice
-      saveInvoice(invoice);
+        // Generate QR code
+        const qrCodeData = await QRCodeLib.toDataURL(url, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
 
-      setPaymentLink(url);
-      setInvoiceId(invoice.id);
-      setQrCode(qrCodeData);
+        // Save invoice
+        saveInvoice(invoice);
+
+        setPaymentLink(url);
+        setInvoiceId(invoice.id);
+        setQrCode(qrCodeData);
+
+      } else {
+        // Base Pay flow - just show the payment interface
+        setShowPayment(true);
+      }
+
       setShowPayment(true);
 
       toast({
         title: "Payment Link Generated!",
-        description: "Your support payment is ready",
+        description: `Your ${selectedNetwork === 'solana' ? 'Solana' : 'Base'} payment is ready`,
       });
 
     } catch (error) {
@@ -164,30 +189,96 @@ export const BuyMeCoffee = () => {
     }
   };
 
+  // Poll Base Pay payment status
+  const pollBasePaymentStatus = async (paymentId: string) => {
+    const maxAttempts = 30; // 5 minutes max
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        const status = await getBasePaymentStatus(paymentId, true);
+        setBasePaymentStatus(status.status);
+
+        if (status.status === 'completed') {
+          toast({
+            title: "Payment Completed!",
+            description: "Your Base Pay USDC payment was successful",
+          });
+          return;
+        } else if (status.status === 'failed') {
+          toast({
+            title: "Payment Failed",
+            description: "Your Base Pay payment could not be completed",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Continue polling if pending
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 10000); // Poll every 10 seconds
+        }
+      } catch (error) {
+        console.error('Error polling Base Pay status:', error);
+      }
+    };
+
+    poll();
+  };
+
   const copyPaymentLink = async () => {
-    const checkoutUrl = `${window.location.origin}/checkout?invoice=${invoiceId}`;
-    await navigator.clipboard.writeText(checkoutUrl);
+    if (selectedNetwork === 'base') {
+      // For Base Pay, copy the payment ID
+      if (basePaymentId) {
+        await navigator.clipboard.writeText(`Base Pay ID: ${basePaymentId}`);
+      }
+    } else {
+      // For Solana payments, copy the checkout URL
+      const checkoutUrl = `${window.location.origin}/checkout?invoice=${invoiceId}`;
+      await navigator.clipboard.writeText(checkoutUrl);
+    }
     toast({
       title: "Copied!",
-      description: "Payment link copied to clipboard",
+      description: "Payment information copied to clipboard",
     });
   };
 
   const openCheckout = () => {
-    if (invoiceId) {
-      // Open the checkout page in the same window for better wallet integration
-      window.location.href = `/checkout?invoice=${invoiceId}`;
+    if (selectedNetwork === 'base') {
+      // For Base Pay, show instructions
+      toast({
+        title: "Base Pay Instructions",
+        description: "Base Pay requires the @base-org/account SDK. Payment ID: " + basePaymentId,
+      });
+    } else {
+      // For Solana payments, use the checkout page
+      if (invoiceId) {
+        window.location.href = `/checkout?invoice=${invoiceId}`;
+      }
     }
   };
 
   const openInWallet = () => {
-    if (paymentLink) {
-      // Try to open the Solana Pay URL directly
-      window.open(paymentLink, '_self');
+    if (selectedNetwork === 'base') {
+      // For Base Pay, show instructions
+      toast({
+        title: "Base Pay",
+        description: "Base Pay uses smart wallet integration. Install @base-org/account SDK.",
+      });
+    } else {
+      // For Solana payments
+      if (paymentLink) {
+        window.open(paymentLink, '_self');
+      }
     }
   };
 
-  if (showPayment && paymentLink) {
+
+
+  // Payment view
+  if (showPayment && (paymentLink || selectedNetwork === 'base')) {
+    const isBasePayment = selectedNetwork === 'base';
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
         <div className="container mx-auto px-4 py-8">
@@ -207,12 +298,28 @@ export const BuyMeCoffee = () => {
 
             {/* Payment Card */}
             <Card className="shadow-lg border-0">
-              <CardHeader className="text-center bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-t-lg">
+              <CardHeader className={`text-center text-white rounded-t-lg ${
+                isBasePayment
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500'
+              }`}>
                 <div className="flex items-center justify-center gap-3">
                   <Coffee className="h-6 w-6" />
                   <div>
-                    <CardTitle>{selectedAmount} {selectedToken}</CardTitle>
-                    <CardDescription className="text-orange-100">
+                    <CardTitle>
+                      ${selectedAmount} USD
+                      {isBasePayment && (
+                        <span className="text-sm font-normal ml-2">
+                          (USDC on Base)
+                        </span>
+                      )}
+                      {!isBasePayment && (
+                        <span className="text-sm font-normal ml-2">
+                          ({selectedToken} on Solana)
+                        </span>
+                      )}
+                    </CardTitle>
+                    <CardDescription className={isBasePayment ? 'text-blue-100' : 'text-orange-100'}>
                       {message || 'Coffee support'}
                     </CardDescription>
                   </div>
@@ -220,33 +327,81 @@ export const BuyMeCoffee = () => {
               </CardHeader>
 
               <CardContent className="p-6 space-y-6">
-                {/* QR Code */}
-                <div className="text-center">
-                  <div className="bg-white p-4 rounded-lg shadow-sm inline-block">
-                    <img src={qrCode} alt="Payment QR Code" className="w-48 h-48" />
+                {isBasePayment ? (
+                  /* Base Pay Button */
+                  <div className="text-center">
+                    <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                      <div className="flex items-center justify-center mb-4">
+                        <img src={BASE_USDC.logo} alt="USDC" className="w-16 h-16" />
+                      </div>
+                      <h3 className="text-lg font-bold text-blue-900 mb-2">Base Pay - USDC Payment</h3>
+                      <p className="text-sm text-blue-700 mb-6">
+                        Fast, secure USDC payment on Base network. No gas fees, settles in seconds.
+                      </p>
+
+                      {/* Official Base Pay Button */}
+                      <div className="flex justify-center mb-4">
+                        <OfficialBasePayButton
+                          amount={selectedAmount.toString()}
+                          to={MERCHANT_DATA.baseWalletAddress}
+                          testnet={true}
+                          colorScheme="light"
+                          onPaymentStart={() => {
+                            toast({
+                              title: "Base Pay Started",
+                              description: "Opening Base Pay wallet...",
+                            });
+                          }}
+                          onPaymentComplete={(id) => {
+                            setBasePaymentId(id);
+                            setBasePaymentStatus('completed');
+                          }}
+                          onPaymentError={(error) => {
+                            setBasePaymentStatus('failed');
+                          }}
+                        />
+                      </div>
+
+                      <div className="text-xs text-blue-600 space-y-1">
+                        <p>💡 One-tap payment with Base Account</p>
+                        <p>🔒 Secure USDC transfer on Base network</p>
+                        <p>⚡ No gas fees for you</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 space-y-1">
-                    <p className="text-sm font-medium text-gray-700">
-                      Scan with Solana Wallet
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Phantom, Solflare, or any Solana Pay compatible wallet
-                    </p>
-                    <p className="text-xs text-orange-600">
-                      ⚠️ If QR scanner suggests "Base", ignore it - this is a Solana payment
-                    </p>
+                ) : (
+                  /* Solana QR Code */
+                  <div className="text-center">
+                    <div className="bg-white p-4 rounded-lg shadow-sm inline-block">
+                      <img src={qrCode} alt="Payment QR Code" className="w-48 h-48" />
+                    </div>
+                    <div className="mt-3 space-y-1">
+                      <p className="text-sm font-medium text-gray-700">
+                        Scan with Solana Wallet
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Phantom, Solflare, or any Solana Pay compatible wallet
+                      </p>
+                      <p className="text-xs text-orange-600">
+                        ⚠️ If QR scanner suggests "Base", ignore it - this is a Solana payment
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="space-y-3">
                   <Button
                     onClick={openCheckout}
-                    className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                    className={`w-full ${
+                      isBasePayment
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                        : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600'
+                    }`}
                     size="lg"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    Continue to Payment
+                    Continue to {isBasePayment ? 'Base' : 'Solana'} Payment
                   </Button>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -444,6 +599,59 @@ export const BuyMeCoffee = () => {
                       onChange={(e) => setSupporterName(e.target.value)}
                     />
                   </div>
+
+                  {/* Payment Network Selection */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-3 block">
+                      Payment Network
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-lg">
+                      <button
+                        onClick={() => setSelectedNetwork('solana')}
+                        className={`px-3 py-3 text-sm font-medium rounded-md transition-colors ${
+                          selectedNetwork === 'solana'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <img
+                            src="/solana-sol-logo.png"
+                            alt="Solana"
+                            className="w-5 h-5"
+                          />
+                          <span>Solana</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">SOL, USDC</div>
+                      </button>
+                      <button
+                        onClick={() => setSelectedNetwork('base')}
+                        className={`px-3 py-3 text-sm font-medium rounded-md transition-colors ${
+                          selectedNetwork === 'base'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <img
+                            src={BASE_PAY_CONFIG.mainnet.logo}
+                            alt="Base"
+                            className="w-5 h-5"
+                          />
+                          <span>Base Pay</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">USDC only</div>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {selectedNetwork === 'solana'
+                        ? 'Pay with SOL or USDC on Solana network. Fast and low fees.'
+                        : 'Pay with USDC on Base network. One-tap payments, no gas fees.'
+                      }
+                    </p>
+                  </div>
+
+
 
                   {/* Support Button */}
                   <Button
