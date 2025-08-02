@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,10 +12,11 @@ import QRCode from 'qrcode';
 import {
   createInvoice,
   generatePaymentURL,
-  saveInvoice,
   PaymentLinkData,
   SPL_TOKENS
 } from '@/lib/payment-utils';
+import { PaymentLinkService, InvoiceService } from '@/lib/supabase-service';
+import { getCurrentMerchant } from '@/lib/merchant-auth';
 
 interface PaymentFormData {
   amount: string;
@@ -27,8 +29,13 @@ interface PaymentFormData {
   network: 'solana' | 'base' | 'multi'; // Add multi-network option
 }
 
-export const PaymentLinkGenerator = () => {
+interface PaymentLinkGeneratorProps {
+  onLinkCreated?: () => void;
+}
+
+export const PaymentLinkGenerator = ({ onLinkCreated }: PaymentLinkGeneratorProps) => {
   const { toast } = useToast();
+  const { connected, publicKey } = useWallet();
   const [formData, setFormData] = useState<PaymentFormData>({
     amount: '',
     token: 'USDC',
@@ -49,6 +56,15 @@ export const PaymentLinkGenerator = () => {
   const generatePaymentLink = async () => {
     try {
       setIsGenerating(true);
+
+      if (!connected || !publicKey) {
+        toast({
+          title: "Wallet Not Connected",
+          description: "Please connect your wallet to create payment links",
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (!formData.recipientWallet || !formData.amount || !formData.title) {
         toast({
@@ -138,8 +154,46 @@ export const PaymentLinkGenerator = () => {
         margin: 2
       });
 
-      // Save invoice to local storage
-      saveInvoice(invoice);
+      // Get current merchant
+      const merchant = await getCurrentMerchant(publicKey);
+      if (!merchant) {
+        toast({
+          title: "Business Not Registered",
+          description: "Please register your business first",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Save to Supabase (required for payment processing)
+      await Promise.all([
+        // Create invoice in Supabase
+        InvoiceService.createInvoice({
+          merchantId: merchant.id,
+          reference: invoice.reference,
+          amount: parseFloat(formData.amount),
+          tokenSymbol: formData.token,
+          recipientAddress: formData.recipientWallet,
+          title: formData.title,
+          description: formData.description,
+          expiresAt: invoice.expiresAt
+        }),
+
+        // Create payment link in Supabase
+        PaymentLinkService.createPaymentLink({
+          merchantId: merchant.id,
+          slug: invoice.reference, // Use reference as slug
+          title: formData.title,
+          description: formData.description,
+          amount: parseFloat(formData.amount),
+          tokenSymbol: formData.token,
+          recipientAddress: formData.recipientWallet,
+          network: formData.network === 'multi' ? 'solana' : formData.network,
+          expiresAt: invoice.expiresAt
+        })
+      ]);
+
+      console.log('Successfully saved to Supabase');
 
       // Create payment link data
       const linkData: PaymentLinkData = {
@@ -155,11 +209,20 @@ export const PaymentLinkGenerator = () => {
         description: `Invoice ${invoice.id} created with reference tracking`,
       });
 
+      // Call the callback to refresh the parent component
+      onLinkCreated?.();
+
     } catch (error) {
       console.error('Error generating payment link:', error);
+
+      // Determine error type for better user messaging
+      const errorMessage = error instanceof Error && error.message.includes('Failed to create')
+        ? "Unable to connect to payment service. Please check your connection and try again."
+        : "Failed to generate payment link. Please check your inputs and try again.";
+
       toast({
-        title: "Error",
-        description: "Failed to generate payment link. Please check your inputs.",
+        title: "Service Error",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

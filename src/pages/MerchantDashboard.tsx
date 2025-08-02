@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, DollarSign, TrendingUp, Calendar, Wallet, Building2, Clock, ArrowUpRight, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Calendar, Wallet, Building2, Clock, ArrowUpRight, CheckCircle, AlertCircle, Plus, LifeBuoy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { MerchantService } from '@/lib/supabase-service';
@@ -88,6 +88,26 @@ export const MerchantDashboard = () => {
       toast({
         title: "Error",
         description: "Business name is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!businessForm.email.trim()) {
+      toast({
+        title: "Error",
+        description: "Email is required for account recovery",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(businessForm.email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive"
       });
       return;
@@ -225,14 +245,16 @@ export const MerchantDashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="business@example.com"
                       value={businessForm.email}
                       onChange={(e) => setBusinessForm(prev => ({ ...prev, email: e.target.value }))}
+                      required
                     />
+                    <p className="text-xs text-muted-foreground">Required for account recovery if you lose wallet access</p>
                   </div>
                 </div>
 
@@ -257,32 +279,57 @@ export const MerchantDashboard = () => {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-blue-500" />
-                  <div className="text-sm">
-                    <p className="font-medium text-foreground">Why register your business?</p>
-                    <p className="text-muted-foreground">Registration enables payment processing, client management, and analytics features.</p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-blue-500" />
+                    <div className="text-sm">
+                      <p className="font-medium text-foreground">Why register your business?</p>
+                      <p className="text-muted-foreground">Registration enables payment processing, client management, and analytics features.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                    <LifeBuoy className="w-5 h-5 text-orange-500" />
+                    <div className="text-sm">
+                      <p className="font-medium text-foreground">Account Recovery Protection</p>
+                      <p className="text-muted-foreground">Your email enables account recovery if you lose wallet access. Without it, losing your wallet means losing your business data forever.</p>
+                    </div>
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleBusinessRegistration}
-                  disabled={isRegistering || !businessForm.businessName.trim()}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isRegistering ? (
-                    <>
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                      Registering...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Register Business
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleBusinessRegistration}
+                    disabled={isRegistering || !businessForm.businessName.trim() || !businessForm.email.trim()}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isRegistering ? (
+                      <>
+                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                        Registering...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Register Business
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-2">Already have a business account?</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = '/recover'}
+                      className="text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
+                    >
+                      <LifeBuoy className="w-4 h-4 mr-2" />
+                      Recover Your Account
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ) : (

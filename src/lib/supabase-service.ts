@@ -60,27 +60,38 @@ export class MerchantService {
         ? walletAddress
         : walletAddress.toString()
 
-      const { data, error } = await supabase
+      // First try to find by primary wallet address
+      let { data, error } = await supabase
         .from('merchants')
         .select('*')
         .eq('wallet_address', walletAddressStr)
         .single()
 
-      if (error) {
+      if (data) {
+        return data
+      }
+
+      // If not found by primary wallet, check wallet_addresses array
+      const { data: merchantsWithWallet, error: arrayError } = await supabase
+        .from('merchants')
+        .select('*')
+        .contains('wallet_addresses', [walletAddressStr])
+
+      if (arrayError) {
         // Handle common errors gracefully
-        if (error.code === 'PGRST116') {
-          // Not found - this is expected for new merchants
-          return null
-        }
-        if (error.code === '406' || error.message.includes('406')) {
-          // Not acceptable - likely RLS issue, return null to fallback to localStorage
+        if (arrayError.code === '406' || arrayError.message.includes('406')) {
           console.warn('Supabase RLS blocking access, falling back to localStorage')
           return null
         }
-        throw new Error(`Failed to get merchant: ${error.message}`)
+        console.warn('Error searching wallet_addresses:', arrayError)
+        return null
       }
 
-      return data
+      if (merchantsWithWallet && merchantsWithWallet.length > 0) {
+        return merchantsWithWallet[0] // Return first match
+      }
+
+      return null
     } catch (error) {
       console.warn('Error accessing Supabase, falling back to localStorage:', error)
       return null
@@ -447,6 +458,128 @@ export class PaymentLinkService {
 
     if (error) {
       throw new Error(`Failed to increment usage: ${error.message}`)
+    }
+  }
+
+  static async getPaymentLinksByMerchant(
+    merchantId: string,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<PaymentLinkRow[]> {
+    try {
+      const { data, error } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('merchant_id', merchantId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) {
+        console.warn('Error fetching payment links from Supabase:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.warn('Error accessing Supabase payment links:', error)
+      return []
+    }
+  }
+
+  // Account Recovery Methods
+  static async findMerchantByEmail(email: string) {
+    try {
+      const { data, error } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single()
+
+      if (error) {
+        console.warn('Error finding merchant by email:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.warn('Error accessing merchant by email:', error)
+      return null
+    }
+  }
+
+  static async addWalletToMerchant(merchantId: string, newWalletAddress: string) {
+    try {
+      // First check if wallet is already associated with another merchant
+      const existingMerchant = await this.getMerchantByWallet(newWalletAddress)
+      if (existingMerchant && existingMerchant.id !== merchantId) {
+        throw new Error('This wallet is already associated with another business account')
+      }
+
+      // Add the new wallet address to the merchant's wallet_addresses array
+      const { data: merchant } = await supabase
+        .from('merchants')
+        .select('wallet_addresses')
+        .eq('id', merchantId)
+        .single()
+
+      if (!merchant) {
+        throw new Error('Merchant not found')
+      }
+
+      const currentWallets = merchant.wallet_addresses || []
+      if (!currentWallets.includes(newWalletAddress)) {
+        const updatedWallets = [...currentWallets, newWalletAddress]
+
+        const { error } = await supabase
+          .from('merchants')
+          .update({ wallet_addresses: updatedWallets })
+          .eq('id', merchantId)
+
+        if (error) {
+          throw new Error(`Failed to add wallet: ${error.message}`)
+        }
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error adding wallet to merchant:', error)
+      throw error
+    }
+  }
+
+  static async removeWalletFromMerchant(merchantId: string, walletAddress: string) {
+    try {
+      const { data: merchant } = await supabase
+        .from('merchants')
+        .select('wallet_addresses, wallet_address')
+        .eq('id', merchantId)
+        .single()
+
+      if (!merchant) {
+        throw new Error('Merchant not found')
+      }
+
+      // Don't allow removing the primary wallet if it's the only one
+      const currentWallets = merchant.wallet_addresses || []
+      if (currentWallets.length <= 1 && merchant.wallet_address === walletAddress) {
+        throw new Error('Cannot remove the only wallet address. Add another wallet first.')
+      }
+
+      const updatedWallets = currentWallets.filter(addr => addr !== walletAddress)
+
+      const { error } = await supabase
+        .from('merchants')
+        .update({ wallet_addresses: updatedWallets })
+        .eq('id', merchantId)
+
+      if (error) {
+        throw new Error(`Failed to remove wallet: ${error.message}`)
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error removing wallet from merchant:', error)
+      throw error
     }
   }
 }

@@ -20,8 +20,8 @@ import {
   EyeOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  getCurrentMerchant, 
+import {
+  getCurrentMerchantSync,
   updateMerchantSettings,
   MerchantSettings 
 } from '@/lib/merchant-auth';
@@ -38,7 +38,7 @@ interface WebhookEvent {
 
 export const WebhookManager = () => {
   const { toast } = useToast();
-  const [merchant, setMerchant] = useState(getCurrentMerchant());
+  const [merchant, setMerchant] = useState(getCurrentMerchantSync());
   const [settings, setSettings] = useState<MerchantSettings | null>(merchant?.settings || null);
   const [webhookUrl, setWebhookUrl] = useState(merchant?.settings.webhookUrl || '');
   const [webhookSecret, setWebhookSecret] = useState(merchant?.settings.webhookSecret || '');
@@ -47,7 +47,7 @@ export const WebhookManager = () => {
   const [webhookEvents, setWebhookEvents] = useState<WebhookEvent[]>([]);
 
   useEffect(() => {
-    const currentMerchant = getCurrentMerchant();
+    const currentMerchant = getCurrentMerchantSync();
     setMerchant(currentMerchant);
     setSettings(currentMerchant?.settings || null);
     setWebhookUrl(currentMerchant?.settings.webhookUrl || '');
@@ -72,7 +72,7 @@ export const WebhookManager = () => {
 
       if (success) {
         // Update local state
-        const updatedMerchant = getCurrentMerchant();
+        const updatedMerchant = getCurrentMerchantSync();
         setMerchant(updatedMerchant);
         setSettings(updatedMerchant?.settings || null);
 

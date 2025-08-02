@@ -30,7 +30,7 @@ import {
   Zap
 } from 'lucide-react';
 import { getInvoices, PaymentStatus, formatAmount } from '@/lib/payment-utils';
-import { getCurrentMerchant } from '@/lib/merchant-auth';
+import { getCurrentMerchantSync } from '@/lib/merchant-auth';
 import BigNumber from 'bignumber.js';
 
 interface AnalyticsData {
@@ -46,7 +46,7 @@ interface AnalyticsData {
 const COLORS = ['#8b5cf6', '#06d6a0', '#f72585', '#4cc9f0', '#7209b7'];
 
 export const AdvancedAnalytics = () => {
-  const [merchant] = useState(getCurrentMerchant());
+  const [merchant] = useState(getCurrentMerchantSync());
   const [timeRange, setTimeRange] = useState('30d');
   const [isLoading, setIsLoading] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);

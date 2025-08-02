@@ -13,7 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { PaymentLinkService } from '@/lib/supabase-service';
 import { getCurrentMerchant } from '@/lib/merchant-auth';
-import { getInvoices, PaymentStatus, formatAmount } from '@/lib/payment-utils';
+import { PaymentStatus, formatAmount } from '@/lib/payment-utils';
+import { PaymentLinkGenerator } from '@/components/PaymentLinkGenerator';
 
 // Chain Icons using actual logos
 const SolanaIcon = () => (
@@ -56,6 +57,7 @@ export const PaymentLinks = () => {
   const [networkFilter, setNetworkFilter] = useState<'all' | 'solana' | 'base'>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(true); // Default to true to avoid flash
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -84,44 +86,40 @@ export const PaymentLinks = () => {
       let links: PaymentLink[] = [];
 
       // Try to get merchant and load from Supabase first
-      const currentMerchant = getCurrentMerchant();
-      if (currentMerchant && connected && publicKey) {
+      if (connected && publicKey) {
         try {
-          // Note: We'd need to implement getPaymentLinksByMerchant in PaymentLinkService
-          // For now, we'll fall back to localStorage invoices
-          console.log('Merchant found, but Supabase payment links not implemented yet');
+          const currentMerchant = await getCurrentMerchant(publicKey);
+          if (currentMerchant) {
+            // Load payment links from Supabase
+            const supabaseLinks = await PaymentLinkService.getPaymentLinksByMerchant(currentMerchant.id);
+
+            links = supabaseLinks.map(link => ({
+              id: link.id,
+              title: link.title,
+              description: link.description || '',
+              amount: link.amount?.toString() || '0',
+              token: link.token_symbol || 'USDC',
+              network: (link.network as 'solana' | 'base') || 'solana',
+              recipient: link.recipient_address,
+              status: (link.is_active ? 'pending' : 'expired') as PaymentStatus,
+              createdAt: new Date(link.created_at),
+              expiresAt: link.expires_at ? new Date(link.expires_at) : undefined,
+              paymentUrl: `${window.location.origin}/checkout?reference=${link.slug}`
+            }));
+
+            console.log(`Loaded ${links.length} payment links from Supabase`);
+          } else {
+            console.log('No merchant found - business registration required');
+          }
         } catch (error) {
-          console.warn('Failed to load from Supabase:', error);
+          console.error('Failed to load from Supabase:', error);
+          toast({
+            title: "Service Unavailable",
+            description: "Unable to connect to payment service. Please try again later.",
+            variant: "destructive"
+          });
         }
       }
-
-      // Load from localStorage invoices as fallback
-      const invoices = getInvoices();
-      links = invoices.map(invoice => {
-        // Convert PublicKey to string for recipient
-        const recipientStr = typeof invoice.recipient === 'string'
-          ? invoice.recipient
-          : invoice.recipient.toString();
-
-        // Convert BigNumber to string for amount
-        const amountStr = typeof invoice.amount === 'string'
-          ? invoice.amount
-          : invoice.amount.toString();
-
-        return {
-          id: invoice.id,
-          title: invoice.title,
-          description: invoice.description || '',
-          amount: amountStr,
-          token: invoice.token,
-          network: recipientStr.startsWith('0x') ? 'base' : 'solana',
-          recipient: recipientStr,
-          status: invoice.status,
-          createdAt: invoice.createdAt,
-          expiresAt: invoice.expiresAt,
-          paymentUrl: `${window.location.origin}/checkout?invoice=${invoice.id}`
-        };
-      });
 
       setPaymentLinks(links);
     } catch (error) {
@@ -189,12 +187,12 @@ export const PaymentLinks = () => {
             <p className="text-muted-foreground mt-1">Manage and track your payment links</p>
           </div>
           <Button
-            onClick={() => navigate('/')}
+            onClick={() => setShowCreateForm(!showCreateForm)}
             disabled={!isRegistered}
             className="flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Create New Link
+            {showCreateForm ? 'Cancel' : 'Create New Link'}
           </Button>
         </div>
 
@@ -220,6 +218,26 @@ export const PaymentLinks = () => {
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Payment Link Creation Form */}
+        {showCreateForm && isRegistered && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Create New Payment Link</CardTitle>
+              <CardDescription>
+                Generate a payment link for your clients to send payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PaymentLinkGenerator
+                onLinkCreated={() => {
+                  loadPaymentLinks();
+                  setShowCreateForm(false);
+                }}
+              />
             </CardContent>
           </Card>
         )}

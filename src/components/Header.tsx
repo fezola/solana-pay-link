@@ -1,9 +1,12 @@
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Wallet, Zap, Coffee, ExternalLink, ShoppingBag } from 'lucide-react';
+import { Wallet, Zap, Coffee, ExternalLink, ShoppingBag, LifeBuoy } from 'lucide-react';
 
 export const Header = () => {
+  const { connected } = useWallet();
+
   return (
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -57,7 +60,20 @@ export const Header = () => {
             </Button>
           </div>
 
-          <WalletMultiButton className="!bg-gradient-solana !hover:shadow-glow !transition-all !duration-300" />
+          {!connected && (
+            <Link to="/recover">
+              <Button variant="outline" size="sm" className="flex items-center gap-2 border-orange-500/20 text-orange-500 hover:bg-orange-500/10">
+                <LifeBuoy className="w-4 h-4" />
+                Recover Account
+              </Button>
+            </Link>
+          )}
+
+          <WalletMultiButton
+            className="!bg-gradient-solana !hover:shadow-glow !transition-all !duration-300"
+          >
+            {connected ? 'Connected' : 'Connect Wallet'}
+          </WalletMultiButton>
         </div>
       </div>
     </header>

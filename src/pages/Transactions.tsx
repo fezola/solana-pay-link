@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ExternalLink, Search, Filter, RefreshCw, TrendingUp, DollarSign, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
-import { getInvoices, PaymentStatus, formatAmount, clearAllInvoices } from '@/lib/payment-utils';
+import { PaymentStatus, formatAmount, clearAllInvoices } from '@/lib/payment-utils';
+import { InvoiceService } from '@/lib/supabase-service';
+import { getCurrentMerchant } from '@/lib/merchant-auth';
 
 // Chain Icons using actual logos
 const SolanaIcon = () => (
@@ -61,8 +63,41 @@ export const Transactions = () => {
   const loadTransactions = async () => {
     setIsLoading(true);
     try {
-      // Load invoices and convert to transactions format
-      const invoices = getInvoices();
+      let invoices: any[] = [];
+
+      // Try to load from Supabase first
+      if (connected && publicKey) {
+        try {
+          const currentMerchant = await getCurrentMerchant(publicKey);
+          if (currentMerchant) {
+            const supabaseInvoices = await InvoiceService.getInvoicesByMerchant(currentMerchant.id);
+            invoices = supabaseInvoices.map(inv => ({
+              id: inv.id,
+              reference: inv.reference,
+              title: inv.title || 'Payment',
+              description: inv.description || '',
+              amount: inv.amount.toString(),
+              token: inv.token_symbol,
+              recipient: inv.recipient_address,
+              status: inv.status as PaymentStatus,
+              createdAt: new Date(inv.created_at),
+              expiresAt: inv.expires_at ? new Date(inv.expires_at) : undefined
+            }));
+            console.log(`Loaded ${invoices.length} invoices from Supabase`);
+          } else {
+            console.log('No merchant found - business registration required');
+          }
+        } catch (error) {
+          console.error('Failed to load from Supabase:', error);
+          toast({
+            title: "Service Unavailable",
+            description: "Unable to connect to payment service. Please try again later.",
+            variant: "destructive"
+          });
+        }
+      }
+
+      // Convert invoices to transactions format
       const txs: Transaction[] = invoices.map(invoice => {
         // Convert PublicKey to string for recipient
         const recipientStr = typeof invoice.recipient === 'string'

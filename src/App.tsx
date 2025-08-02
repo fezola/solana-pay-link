@@ -13,6 +13,7 @@ import { PaymentLinks } from "./pages/PaymentLinks";
 import { Transactions } from "./pages/Transactions";
 import { MerchantIntegration } from "./pages/MerchantIntegration";
 import { MerchantDashboard } from "./pages/MerchantDashboard";
+import { AccountRecovery } from "./pages/AccountRecovery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/payment-links" element={<PaymentLinks />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/integration" element={<MerchantIntegration />} />
+              <Route path="/recover" element={<AccountRecovery />} />
               {/* Demo routes - hidden from main navigation */}
               <Route path="/coffee" element={<BuyMeCoffee />} />
               <Route path="/shop" element={<EcommerceDemo />} />

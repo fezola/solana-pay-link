@@ -13,7 +13,7 @@ import { PaymentConfirmationSystem } from './PaymentConfirmationSystem';
 import { DollarSign, TrendingUp, Users, Link } from 'lucide-react';
 import { getInvoices, PaymentStatus, formatAmount } from '@/lib/payment-utils';
 import { useTransactionMonitor } from '@/hooks/useTransactionMonitor';
-import { getCurrentMerchant, MerchantProfile } from '@/lib/merchant-auth';
+import { getCurrentMerchantSync, MerchantProfile } from '@/lib/merchant-auth';
 import { useWallet } from '@solana/wallet-adapter-react';
 import BigNumber from 'bignumber.js';
 
@@ -33,7 +33,7 @@ export const MerchantDashboard = () => {
   // Check for current merchant
   useEffect(() => {
     if (connected) {
-      const merchant = getCurrentMerchant();
+      const merchant = getCurrentMerchantSync();
       setCurrentMerchant(merchant);
     } else {
       setCurrentMerchant(null);

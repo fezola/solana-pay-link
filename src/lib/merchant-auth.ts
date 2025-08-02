@@ -52,8 +52,10 @@ function convertSupabaseMerchant(supabaseMerchant: any, walletAddress: PublicKey
   };
 }
 
-// Session management (in-memory only)
-export function getCurrentMerchant(): MerchantProfile | null {
+// Session management (in-memory only) - DEPRECATED
+// Use async getCurrentMerchant(walletAddress) instead
+export function getCurrentMerchantSync(): MerchantProfile | null {
+  console.warn('getCurrentMerchantSync is deprecated, use async getCurrentMerchant(walletAddress) instead');
   return currentMerchant;
 }
 
@@ -145,23 +147,42 @@ export async function updateMerchantSettings(
 
 // Check if wallet is authenticated as merchant
 export function isWalletAuthenticated(walletAddress: PublicKey): boolean {
-  const current = getCurrentMerchant();
+  const current = getCurrentMerchantSync();
   if (!current) return false;
   return current.walletAddress.equals(walletAddress);
+}
+
+// Get current merchant by wallet address (Supabase-only)
+export async function getCurrentMerchant(walletAddress: PublicKey | string): Promise<MerchantProfile | null> {
+  try {
+    const walletAddressStr = typeof walletAddress === 'string'
+      ? walletAddress
+      : walletAddress.toString();
+
+    const supabaseMerchant = await MerchantService.getMerchantByWallet(walletAddressStr);
+
+    if (supabaseMerchant) {
+      const publicKey = typeof walletAddress === 'string'
+        ? new PublicKey(walletAddress)
+        : walletAddress;
+      return convertSupabaseMerchant(supabaseMerchant, publicKey);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to get current merchant:', error);
+    return null;
+  }
 }
 
 // Authenticate merchant with wallet (Supabase-only)
 export async function authenticateMerchant(walletAddress: PublicKey): Promise<MerchantProfile | null> {
   try {
-    const supabaseMerchant = await MerchantService.getMerchantByWallet(walletAddress);
-
-    if (supabaseMerchant) {
-      const merchant = convertSupabaseMerchant(supabaseMerchant, walletAddress);
+    const merchant = await getCurrentMerchant(walletAddress);
+    if (merchant) {
       currentMerchant = merchant;
-      return merchant;
     }
-
-    return null;
+    return merchant;
   } catch (error) {
     console.error('Failed to authenticate merchant:', error);
     return null;
