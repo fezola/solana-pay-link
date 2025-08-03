@@ -37,7 +37,7 @@ export const BasePayButton = ({
 
       if (baseModule.createBaseAccountSDK) {
         const baseSDK = baseModule.createBaseAccountSDK({
-          appName: 'Kylr',
+          appName: 'Klyr',
           appLogo: '/base.JPG'
         });
 

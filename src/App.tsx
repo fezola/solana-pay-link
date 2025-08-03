@@ -12,7 +12,11 @@ import { MultiChainDemo } from "./pages/MultiChainDemo";
 import { PaymentLinks } from "./pages/PaymentLinks";
 import { Transactions } from "./pages/Transactions";
 import { MerchantIntegration } from "./pages/MerchantIntegration";
+import { LandingPage } from "./pages/LandingPage";
 import { MerchantDashboard } from "./pages/MerchantDashboard";
+import { MerchantPOS } from "./pages/MerchantPOS";
+import { POSDemo } from "./pages/POSDemo";
+import { PaymentRedirect } from "./pages/PaymentRedirect";
 import { AccountRecovery } from "./pages/AccountRecovery";
 import NotFound from "./pages/NotFound";
 
@@ -27,10 +31,14 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<MerchantDashboard />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/dashboard" element={<MerchantDashboard />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/payment-links" element={<PaymentLinks />} />
               <Route path="/transactions" element={<Transactions />} />
+              <Route path="/pos" element={<MerchantPOS />} />
+              <Route path="/pos-demo" element={<POSDemo />} />
+              <Route path="/pay" element={<PaymentRedirect />} />
               <Route path="/integration" element={<MerchantIntegration />} />
               <Route path="/recover" element={<AccountRecovery />} />
               {/* Demo routes - hidden from main navigation */}

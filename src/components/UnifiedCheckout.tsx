@@ -375,12 +375,11 @@ export const UnifiedCheckout = ({
                     <Zap className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Powered by Kylr</h3>
-                    <p className="text-sm text-gray-600">Decentralized payment platform</p>
+                    <h3 className="font-semibold text-gray-900">Powered by Klyr</h3>
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 mt-3">
-                  Zero fees • Instant settlement • Global accessibility
+                  Zero fees • Instant settlement • Multi-chain support
                 </p>
               </div>
             </div>

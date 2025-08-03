@@ -126,7 +126,7 @@ export const WebhookManager = () => {
         headers: {
           'Content-Type': 'application/json',
           'X-Webhook-Signature': webhookSecret ? `sha256=${webhookSecret}` : '',
-          'User-Agent': 'Kylr-Webhook/1.0'
+          'User-Agent': 'Klyr-Webhook/1.0'
         },
         body: JSON.stringify(testPayload)
       });

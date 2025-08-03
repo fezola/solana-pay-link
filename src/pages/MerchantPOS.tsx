@@ -1,0 +1,508 @@
+import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { 
+  QrCode, 
+  Store, 
+  DollarSign, 
+  Smartphone, 
+  CheckCircle, 
+  Copy,
+  RefreshCw,
+  Wallet,
+  AlertCircle,
+  Plus,
+  Minus
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Header } from '@/components/Header';
+import { getCurrentMerchant } from '@/lib/merchant-auth';
+import { createInvoice, generatePaymentURL } from '@/lib/payment-utils';
+import QRCode from 'qrcode';
+
+interface POSItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export const MerchantPOS = () => {
+  const { toast } = useToast();
+  const { connected, publicKey } = useWallet();
+  const [merchant, setMerchant] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // POS State
+  const [cart, setCart] = useState<POSItem[]>([]);
+  const [customAmount, setCustomAmount] = useState('');
+  const [customerNote, setCustomerNote] = useState('');
+  const [paymentMode, setPaymentMode] = useState<'fixed' | 'custom'>('custom');
+  
+  // Payment State
+  const [currentPayment, setCurrentPayment] = useState<{
+    qrCode: string;
+    paymentUrl: string;
+    amount: number;
+    reference: string;
+  } | null>(null);
+
+  // Quick items for common purchases
+  const [quickItems] = useState([
+    { name: 'Coffee', price: 5 },
+    { name: 'Sandwich', price: 12 },
+    { name: 'Pastry', price: 8 },
+    { name: 'Drink', price: 3 },
+  ]);
+
+  // Load merchant data
+  useEffect(() => {
+    const loadMerchant = async () => {
+      if (connected && publicKey) {
+        try {
+          const currentMerchant = await getCurrentMerchant(publicKey);
+          if (currentMerchant) {
+            // Ensure walletAddress is properly handled
+            const safeMerchant = {
+              ...currentMerchant,
+              walletAddress: typeof currentMerchant.walletAddress === 'string'
+                ? currentMerchant.walletAddress
+                : currentMerchant.walletAddress.toString()
+            };
+            setMerchant(safeMerchant);
+          }
+        } catch (error) {
+          console.error('Error loading merchant:', error);
+        }
+      } else {
+        setMerchant(null);
+      }
+    };
+    loadMerchant();
+  }, [connected, publicKey]);
+
+  const addToCart = (item: { name: string; price: number }) => {
+    const existingItem = cart.find(cartItem => cartItem.name === item.name);
+    if (existingItem) {
+      setCart(cart.map(cartItem => 
+        cartItem.name === item.name 
+          ? { ...cartItem, quantity: cartItem.quantity + 1 }
+          : cartItem
+      ));
+    } else {
+      setCart([...cart, {
+        id: Date.now().toString(),
+        name: item.name,
+        price: item.price,
+        quantity: 1
+      }]);
+    }
+  };
+
+  const updateQuantity = (id: string, change: number) => {
+    setCart(cart.map(item => {
+      if (item.id === id) {
+        const newQuantity = Math.max(0, item.quantity + change);
+        return newQuantity === 0 ? null : { ...item, quantity: newQuantity };
+      }
+      return item;
+    }).filter(Boolean) as POSItem[]);
+  };
+
+  const getTotalAmount = () => {
+    if (paymentMode === 'custom') {
+      return parseFloat(customAmount) || 0;
+    }
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const generatePaymentQR = async () => {
+    const amount = getTotalAmount();
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount or add items to cart",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!merchant) {
+      toast({
+        title: "Business Not Registered",
+        description: "Please register your business first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Create invoice
+      const recipientAddress = merchant.walletAddress;
+
+      const invoice = createInvoice({
+        amount: amount.toString(),
+        token: 'SOL',
+        recipient: recipientAddress,
+        title: paymentMode === 'custom' ? 'Custom Payment' : 'Store Purchase',
+        description: paymentMode === 'custom'
+          ? customerNote || 'In-store payment'
+          : cart.map(item => `${item.quantity}x ${item.name}`).join(', ')
+      });
+
+      // Generate payment URL
+      const paymentUrl = generatePaymentURL(invoice);
+
+      // Generate QR code
+      const qrCodeDataUrl = await QRCode.toDataURL(paymentUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      setCurrentPayment({
+        qrCode: qrCodeDataUrl,
+        paymentUrl,
+        amount,
+        reference: invoice.reference
+      });
+
+      toast({
+        title: "Payment QR Generated",
+        description: "Customer can scan the QR code to pay",
+      });
+
+    } catch (error) {
+      console.error('Error generating payment QR:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate payment QR code",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPayment = () => {
+    setCurrentPayment(null);
+    setCart([]);
+    setCustomAmount('');
+    setCustomerNote('');
+  };
+
+  const copyPaymentUrl = () => {
+    if (currentPayment) {
+      navigator.clipboard.writeText(currentPayment.paymentUrl);
+      toast({
+        title: "Copied!",
+        description: "Payment URL copied to clipboard",
+      });
+    }
+  };
+
+  if (!connected) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-20">
+          <div className="text-center max-w-md mx-auto">
+            <Wallet className="w-16 h-16 mx-auto mb-6 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-4">Connect Your Wallet</h2>
+            <p className="text-muted-foreground mb-6">
+              Connect your wallet to access the Point of Sale system
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!merchant) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-20">
+          <div className="text-center max-w-md mx-auto">
+            <Store className="w-16 h-16 mx-auto mb-6 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-4">Business Registration Required</h2>
+            <p className="text-muted-foreground mb-6">
+              Please register your business first to use the POS system
+            </p>
+            <Button onClick={() => window.location.href = '/dashboard'}>
+              Register Business
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Point of Sale</h1>
+          <p className="text-muted-foreground">
+            Accept Solana payments in your physical store
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Side - POS Interface */}
+          <div className="space-y-6">
+            {/* Business Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="w-5 h-5" />
+                  {merchant.businessName}
+                </CardTitle>
+                <CardDescription>
+                  Accepting SOL and USDC payments
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* Payment Mode Toggle */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Mode</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    variant={paymentMode === 'custom' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMode('custom')}
+                    className="h-20 flex flex-col gap-2"
+                  >
+                    <DollarSign className="w-6 h-6" />
+                    <span>Custom Amount</span>
+                  </Button>
+                  <Button
+                    variant={paymentMode === 'fixed' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMode('fixed')}
+                    className="h-20 flex flex-col gap-2"
+                  >
+                    <QrCode className="w-6 h-6" />
+                    <span>Fixed Items</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Custom Amount Mode */}
+            {paymentMode === 'custom' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Custom Payment</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="amount">Amount (SOL)</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="note">Customer Note (Optional)</Label>
+                    <Input
+                      id="note"
+                      placeholder="e.g., Coffee and pastry"
+                      value={customerNote}
+                      onChange={(e) => setCustomerNote(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Fixed Items Mode */}
+            {paymentMode === 'fixed' && (
+              <>
+                {/* Quick Items */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Items</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-3">
+                      {quickItems.map((item, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          onClick={() => addToCart(item)}
+                          className="h-16 flex flex-col gap-1"
+                        >
+                          <span className="font-medium">{item.name}</span>
+                          <span className="text-sm text-muted-foreground">{item.price} SOL</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Shopping Cart */}
+                {cart.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Cart</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {cart.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between">
+                            <div>
+                              <span className="font-medium">{item.name}</span>
+                              <span className="text-sm text-muted-foreground ml-2">
+                                {item.price} SOL each
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateQuantity(item.id, -1)}
+                              >
+                                <Minus className="w-4 h-4" />
+                              </Button>
+                              <span className="w-8 text-center">{item.quantity}</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => updateQuantity(item.id, 1)}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <Separator />
+                        <div className="flex justify-between font-bold">
+                          <span>Total:</span>
+                          <span>{getTotalAmount()} SOL</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+
+            {/* Generate Payment Button */}
+            <Button
+              onClick={generatePaymentQR}
+              disabled={isLoading || getTotalAmount() <= 0}
+              className="w-full h-12"
+              size="lg"
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-4 h-4 mr-2" />
+                  Generate Payment QR ({getTotalAmount()} SOL)
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Right Side - Payment Display */}
+          <div className="space-y-6">
+            {currentPayment ? (
+              <>
+                {/* QR Code Display */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-center">Scan to Pay</CardTitle>
+                    <CardDescription className="text-center">
+                      Customer scans this QR code with their Solana wallet
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center space-y-4">
+                    <div className="bg-white p-4 rounded-xl inline-block">
+                      <img 
+                        src={currentPayment.qrCode} 
+                        alt="Payment QR Code"
+                        className="w-64 h-64 mx-auto"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Badge variant="outline" className="text-lg px-4 py-2">
+                        {currentPayment.amount} SOL
+                      </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        Reference: {currentPayment.reference}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={copyPaymentUrl}
+                        className="flex-1"
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copy Link
+                      </Button>
+                      <Button
+                        onClick={resetPayment}
+                        className="flex-1"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        New Payment
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Payment Instructions */}
+                <Alert>
+                  <Smartphone className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Customer Instructions:</strong><br />
+                    1. Open your Solana wallet app<br />
+                    2. Scan the QR code above<br />
+                    3. Confirm the payment amount<br />
+                    4. Complete the transaction
+                  </AlertDescription>
+                </Alert>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-16">
+                  <QrCode className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold mb-2">Ready to Accept Payments</h3>
+                  <p className="text-muted-foreground">
+                    Enter an amount or add items to cart, then generate a payment QR code
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

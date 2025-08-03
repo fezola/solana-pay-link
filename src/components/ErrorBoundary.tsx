@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
     try {
       clearAllMerchantData();
       // Also clear invoice data
-      localStorage.removeItem('kylr_invoices');
+      localStorage.removeItem('klyr_invoices');
       this.handleReload();
     } catch (error) {
       console.error('Error clearing data:', error);
