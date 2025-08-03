@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,16 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { 
-  QrCode, 
-  Store, 
-  DollarSign, 
-  Smartphone, 
-  CheckCircle, 
+import {
+  QrCode,
+  Store,
+  DollarSign,
+  Smartphone,
   Copy,
   RefreshCw,
   Wallet,
-  AlertCircle,
   Plus,
   Minus
 } from 'lucide-react';
@@ -54,13 +51,11 @@ export const MerchantPOS = () => {
     reference: string;
   } | null>(null);
 
-  // Quick items for common purchases
-  const [quickItems] = useState([
-    { name: 'Coffee', price: 5 },
-    { name: 'Sandwich', price: 12 },
-    { name: 'Pastry', price: 8 },
-    { name: 'Drink', price: 3 },
-  ]);
+  // Merchant's custom menu items
+  const [menuItems, setMenuItems] = useState<Array<{name: string, price: number}>>([]);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState('');
+  const [selectedToken, setSelectedToken] = useState<'SOL' | 'USDC'>('SOL');
 
   // Load merchant data
   useEffect(() => {
@@ -88,11 +83,30 @@ export const MerchantPOS = () => {
     loadMerchant();
   }, [connected, publicKey]);
 
+  const addMenuItem = () => {
+    if (newItemName && newItemPrice && parseFloat(newItemPrice) > 0) {
+      setMenuItems([...menuItems, {
+        name: newItemName,
+        price: parseFloat(newItemPrice)
+      }]);
+      setNewItemName('');
+      setNewItemPrice('');
+      toast({
+        title: "Menu Item Added",
+        description: `${newItemName} added to your menu`,
+      });
+    }
+  };
+
+  const removeMenuItem = (index: number) => {
+    setMenuItems(menuItems.filter((_, i) => i !== index));
+  };
+
   const addToCart = (item: { name: string; price: number }) => {
     const existingItem = cart.find(cartItem => cartItem.name === item.name);
     if (existingItem) {
-      setCart(cart.map(cartItem => 
-        cartItem.name === item.name 
+      setCart(cart.map(cartItem =>
+        cartItem.name === item.name
           ? { ...cartItem, quantity: cartItem.quantity + 1 }
           : cartItem
       ));
@@ -150,7 +164,7 @@ export const MerchantPOS = () => {
 
       const invoice = createInvoice({
         amount: amount.toString(),
-        token: 'SOL',
+        token: selectedToken,
         recipient: recipientAddress,
         title: paymentMode === 'custom' ? 'Custom Payment' : 'Store Purchase',
         description: paymentMode === 'custom'
@@ -175,7 +189,7 @@ export const MerchantPOS = () => {
         qrCode: qrCodeDataUrl,
         paymentUrl,
         amount,
-        reference: invoice.reference
+        reference: invoice.reference.toString()
       });
 
       toast({
@@ -271,9 +285,36 @@ export const MerchantPOS = () => {
                   {merchant.businessName}
                 </CardTitle>
                 <CardDescription>
-                  Accepting SOL and USDC payments
+                  Accepting {selectedToken} payments • Wallet: {merchant.walletAddress?.slice(0, 8)}...{merchant.walletAddress?.slice(-8)}
                 </CardDescription>
               </CardHeader>
+            </Card>
+
+            {/* Token Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Token</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    variant={selectedToken === 'SOL' ? 'default' : 'outline'}
+                    onClick={() => setSelectedToken('SOL')}
+                    className="h-16 flex flex-col gap-2"
+                  >
+                    <span className="text-lg">◎</span>
+                    <span>SOL</span>
+                  </Button>
+                  <Button
+                    variant={selectedToken === 'USDC' ? 'default' : 'outline'}
+                    onClick={() => setSelectedToken('USDC')}
+                    className="h-16 flex flex-col gap-2"
+                  >
+                    <span className="text-lg">$</span>
+                    <span>USDC</span>
+                  </Button>
+                </div>
+              </CardContent>
             </Card>
 
             {/* Payment Mode Toggle */}
@@ -297,7 +338,7 @@ export const MerchantPOS = () => {
                     className="h-20 flex flex-col gap-2"
                   >
                     <QrCode className="w-6 h-6" />
-                    <span>Fixed Items</span>
+                    <span>Menu Items</span>
                   </Button>
                 </div>
               </CardContent>
@@ -311,7 +352,7 @@ export const MerchantPOS = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="amount">Amount (SOL)</Label>
+                    <Label htmlFor="amount">Amount ({selectedToken})</Label>
                     <Input
                       id="amount"
                       type="number"
@@ -334,30 +375,76 @@ export const MerchantPOS = () => {
               </Card>
             )}
 
-            {/* Fixed Items Mode */}
+            {/* Menu Items Mode */}
             {paymentMode === 'fixed' && (
               <>
-                {/* Quick Items */}
+                {/* Add New Menu Item */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Quick Items</CardTitle>
+                    <CardTitle>Add Menu Item</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-3">
-                      {quickItems.map((item, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          onClick={() => addToCart(item)}
-                          className="h-16 flex flex-col gap-1"
-                        >
-                          <span className="font-medium">{item.name}</span>
-                          <span className="text-sm text-muted-foreground">{item.price} SOL</span>
-                        </Button>
-                      ))}
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="itemName">Item Name</Label>
+                        <Input
+                          id="itemName"
+                          placeholder="e.g., Coffee"
+                          value={newItemName}
+                          onChange={(e) => setNewItemName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="itemPrice">Price ({selectedToken})</Label>
+                        <Input
+                          id="itemPrice"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={newItemPrice}
+                          onChange={(e) => setNewItemPrice(e.target.value)}
+                        />
+                      </div>
                     </div>
+                    <Button onClick={addMenuItem} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add to Menu
+                    </Button>
                   </CardContent>
                 </Card>
+
+                {/* Your Menu Items */}
+                {menuItems.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Your Menu Items</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-3">
+                        {menuItems.map((item, index) => (
+                          <div key={index} className="relative">
+                            <Button
+                              variant="outline"
+                              onClick={() => addToCart(item)}
+                              className="h-16 w-full flex flex-col gap-1"
+                            >
+                              <span className="font-medium">{item.name}</span>
+                              <span className="text-sm text-muted-foreground">{item.price} {selectedToken}</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeMenuItem(index)}
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Shopping Cart */}
                 {cart.length > 0 && (
@@ -397,7 +484,7 @@ export const MerchantPOS = () => {
                         <Separator />
                         <div className="flex justify-between font-bold">
                           <span>Total:</span>
-                          <span>{getTotalAmount()} SOL</span>
+                          <span>{getTotalAmount()} {selectedToken}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -421,7 +508,7 @@ export const MerchantPOS = () => {
               ) : (
                 <>
                   <QrCode className="w-4 h-4 mr-2" />
-                  Generate Payment QR ({getTotalAmount()} SOL)
+                  Generate Payment QR ({getTotalAmount()} {selectedToken})
                 </>
               )}
             </Button>
@@ -450,7 +537,7 @@ export const MerchantPOS = () => {
                     
                     <div className="space-y-2">
                       <Badge variant="outline" className="text-lg px-4 py-2">
-                        {currentPayment.amount} SOL
+                        {currentPayment.amount} {selectedToken}
                       </Badge>
                       <p className="text-sm text-muted-foreground">
                         Reference: {currentPayment.reference}
