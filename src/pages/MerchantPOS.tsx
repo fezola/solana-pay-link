@@ -172,15 +172,20 @@ export const MerchantPOS = () => {
           : cart.map(item => `${item.quantity}x ${item.name}`).join(', ')
       });
 
-      // Generate payment URL
+      // Generate Solana Pay URL
       const paymentUrl = generatePaymentURL(invoice);
 
-      // Generate QR code
-      const qrCodeDataUrl = await QRCode.toDataURL(paymentUrl, {
+      // Create explicit Solana Pay URL to avoid Base wallet interference
+      const solanaPayUrl = paymentUrl.startsWith('solana:')
+        ? paymentUrl
+        : `solana:${merchant.walletAddress}?amount=${amount}&reference=${invoice.reference.toString()}&label=${encodeURIComponent(invoice.title)}&message=${encodeURIComponent(invoice.description)}`;
+
+      // Generate QR code with purple Solana branding
+      const qrCodeDataUrl = await QRCode.toDataURL(solanaPayUrl, {
         width: 300,
         margin: 2,
         color: {
-          dark: '#000000',
+          dark: '#8B5CF6', // Purple for Solana
           light: '#FFFFFF'
         }
       });
@@ -519,20 +524,29 @@ export const MerchantPOS = () => {
             {currentPayment ? (
               <>
                 {/* QR Code Display */}
-                <Card>
+                <Card className="border-2 border-purple-500/20">
                   <CardHeader>
-                    <CardTitle className="text-center">Scan to Pay</CardTitle>
-                    <CardDescription className="text-center">
-                      Customer scans this QR code with their Solana wallet
+                    <CardTitle className="text-center flex items-center justify-center gap-2">
+                      <img src="/solana-sol-logo.png" alt="Solana" className="w-6 h-6" />
+                      SOLANA PAY QR CODE
+                      <img src="/solana-sol-logo.png" alt="Solana" className="w-6 h-6" />
+                    </CardTitle>
+                    <CardDescription className="text-center text-purple-600 font-medium">
+                      ⚠️ SCAN WITH SOLANA WALLET ONLY (Phantom, Solflare, etc.)
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
-                    <div className="bg-white p-4 rounded-xl inline-block">
-                      <img 
-                        src={currentPayment.qrCode} 
-                        alt="Payment QR Code"
-                        className="w-64 h-64 mx-auto"
-                      />
+                    <div className="bg-white p-6 rounded-xl inline-block border-4 border-purple-500/30">
+                      <div className="relative">
+                        <img
+                          src={currentPayment.qrCode}
+                          alt="Solana Payment QR Code"
+                          className="w-64 h-64 mx-auto"
+                        />
+                        <div className="absolute top-2 left-2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-bold">
+                          SOLANA
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -544,35 +558,42 @@ export const MerchantPOS = () => {
                       </p>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={copyPaymentUrl}
-                        className="flex-1"
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copy Link
-                      </Button>
-                      <Button
-                        onClick={resetPayment}
-                        className="flex-1"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        New Payment
-                      </Button>
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        Solana Pay URL: <code className="bg-muted px-1 rounded text-xs">{currentPayment.paymentUrl.slice(0, 30)}...</code>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={copyPaymentUrl}
+                          className="flex-1"
+                        >
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copy Solana URL
+                        </Button>
+                        <Button
+                          onClick={resetPayment}
+                          className="flex-1 bg-purple-500 hover:bg-purple-600"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          New Payment
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Payment Instructions */}
-                <Alert>
-                  <Smartphone className="h-4 w-4" />
+                <Alert className="border-purple-500/20 bg-purple-500/5">
+                  <Smartphone className="h-4 w-4 text-purple-500" />
                   <AlertDescription>
-                    <strong>Customer Instructions:</strong><br />
-                    1. Open your Solana wallet app<br />
-                    2. Scan the QR code above<br />
-                    3. Confirm the payment amount<br />
-                    4. Complete the transaction
+                    <strong className="text-purple-600">SOLANA WALLET INSTRUCTIONS:</strong><br />
+                    1. <strong>IGNORE Base wallet</strong> if it pops up<br />
+                    2. <strong>Open Phantom or Solflare</strong> manually<br />
+                    3. <strong>Use wallet's scan feature</strong> (not camera app)<br />
+                    4. <strong>Confirm payment</strong> in Solana wallet<br />
+                    <br />
+                    <span className="text-red-600 font-medium">⚠️ If Base wallet opens, CLOSE IT and use Solana wallet instead!</span>
                   </AlertDescription>
                 </Alert>
               </>
