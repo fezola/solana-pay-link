@@ -180,14 +180,15 @@ export const MerchantPOS = () => {
         ? paymentUrl
         : `solana:${merchant.walletAddress}?amount=${amount}&reference=${invoice.reference.toString()}&label=${encodeURIComponent(invoice.title)}&message=${encodeURIComponent(invoice.description)}`;
 
-      // Generate QR code with purple Solana branding
+      // Generate QR code with HIGH CONTRAST for camera detection
       const qrCodeDataUrl = await QRCode.toDataURL(solanaPayUrl, {
-        width: 300,
-        margin: 2,
+        width: 400,
+        margin: 3,
         color: {
-          dark: '#8B5CF6', // Purple for Solana
-          light: '#FFFFFF'
-        }
+          dark: '#000000', // BLACK for maximum contrast
+          light: '#FFFFFF'  // WHITE background
+        },
+        errorCorrectionLevel: 'H' // High error correction
       });
 
       setCurrentPayment({
@@ -289,8 +290,16 @@ export const MerchantPOS = () => {
                   <Store className="w-5 h-5" />
                   {merchant.businessName}
                 </CardTitle>
-                <CardDescription>
-                  Accepting {selectedToken} payments • Wallet: {merchant.walletAddress?.slice(0, 8)}...{merchant.walletAddress?.slice(-8)}
+                <CardDescription className="flex items-center gap-2">
+                  <span>Accepting</span>
+                  <img
+                    src={selectedToken === 'SOL' ? '/solana-sol-logo.png' : '/usd-coin-usdc-logo.png'}
+                    alt={selectedToken}
+                    className="w-4 h-4"
+                  />
+                  <span>{selectedToken} payments</span>
+                  <span>•</span>
+                  <span>Wallet: {merchant.walletAddress?.slice(0, 8)}...{merchant.walletAddress?.slice(-8)}</span>
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -305,18 +314,18 @@ export const MerchantPOS = () => {
                   <Button
                     variant={selectedToken === 'SOL' ? 'default' : 'outline'}
                     onClick={() => setSelectedToken('SOL')}
-                    className="h-16 flex flex-col gap-2"
+                    className="h-20 flex flex-col gap-2"
                   >
-                    <span className="text-lg">◎</span>
-                    <span>SOL</span>
+                    <img src="/solana-sol-logo.png" alt="Solana" className="w-8 h-8" />
+                    <span className="font-medium">SOL</span>
                   </Button>
                   <Button
                     variant={selectedToken === 'USDC' ? 'default' : 'outline'}
                     onClick={() => setSelectedToken('USDC')}
-                    className="h-16 flex flex-col gap-2"
+                    className="h-20 flex flex-col gap-2"
                   >
-                    <span className="text-lg">$</span>
-                    <span>USDC</span>
+                    <img src="/usd-coin-usdc-logo.png" alt="USDC" className="w-8 h-8" />
+                    <span className="font-medium">USDC</span>
                   </Button>
                 </div>
               </CardContent>
@@ -528,23 +537,32 @@ export const MerchantPOS = () => {
                   <CardHeader>
                     <CardTitle className="text-center flex items-center justify-center gap-2">
                       <img src="/solana-sol-logo.png" alt="Solana" className="w-6 h-6" />
-                      SOLANA PAY QR CODE
-                      <img src="/solana-sol-logo.png" alt="Solana" className="w-6 h-6" />
+                      <span>{selectedToken} PAYMENT QR CODE</span>
+                      <img
+                        src={selectedToken === 'SOL' ? '/solana-sol-logo.png' : '/usd-coin-usdc-logo.png'}
+                        alt={selectedToken}
+                        className="w-6 h-6"
+                      />
                     </CardTitle>
                     <CardDescription className="text-center text-purple-600 font-medium">
-                      ⚠️ SCAN WITH SOLANA WALLET ONLY (Phantom, Solflare, etc.)
+                      📱 SCAN WITH SOLANA WALLET (Phantom, Solflare, etc.)
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
-                    <div className="bg-white p-6 rounded-xl inline-block border-4 border-purple-500/30">
+                    <div className="bg-white p-8 rounded-xl inline-block border-2 border-gray-300">
                       <div className="relative">
                         <img
                           src={currentPayment.qrCode}
-                          alt="Solana Payment QR Code"
-                          className="w-64 h-64 mx-auto"
+                          alt={`${selectedToken} Payment QR Code`}
+                          className="w-80 h-80 mx-auto"
                         />
-                        <div className="absolute top-2 left-2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-bold">
-                          SOLANA
+                        <div className="absolute top-2 left-2 bg-black text-white px-3 py-2 rounded flex items-center gap-2">
+                          <img
+                            src={selectedToken === 'SOL' ? '/solana-sol-logo.png' : '/usd-coin-usdc-logo.png'}
+                            alt={selectedToken}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-xs font-bold">{selectedToken}</span>
                         </div>
                       </div>
                     </div>
@@ -584,16 +602,17 @@ export const MerchantPOS = () => {
                 </Card>
 
                 {/* Payment Instructions */}
-                <Alert className="border-purple-500/20 bg-purple-500/5">
-                  <Smartphone className="h-4 w-4 text-purple-500" />
+                <Alert className="border-green-500/20 bg-green-500/5">
+                  <Smartphone className="h-4 w-4 text-green-500" />
                   <AlertDescription>
-                    <strong className="text-purple-600">SOLANA WALLET INSTRUCTIONS:</strong><br />
-                    1. <strong>IGNORE Base wallet</strong> if it pops up<br />
-                    2. <strong>Open Phantom or Solflare</strong> manually<br />
-                    3. <strong>Use wallet's scan feature</strong> (not camera app)<br />
-                    4. <strong>Confirm payment</strong> in Solana wallet<br />
+                    <strong className="text-green-600">📱 SCANNING INSTRUCTIONS:</strong><br />
+                    1. <strong>Open your phone camera</strong> or Solana wallet app<br />
+                    2. <strong>Point at the QR code</strong> above<br />
+                    3. <strong>Tap the notification</strong> when it appears<br />
+                    4. <strong>Choose Solana wallet</strong> (Phantom/Solflare)<br />
+                    5. <strong>Confirm payment</strong> in your wallet<br />
                     <br />
-                    <span className="text-red-600 font-medium">⚠️ If Base wallet opens, CLOSE IT and use Solana wallet instead!</span>
+                    <span className="text-blue-600 font-medium">💡 QR code is now HIGH CONTRAST for better camera detection!</span>
                   </AlertDescription>
                 </Alert>
               </>
