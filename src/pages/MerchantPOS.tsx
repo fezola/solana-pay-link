@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   QrCode,
   Store,
@@ -388,85 +389,95 @@ export const MerchantPOS: React.FC = () => {
             </Card>
 
             {/* Token Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Token</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <Button
-                      variant={selectedToken === 'SOL' ? 'default' : 'outline'}
-                      onClick={() => setSelectedToken('SOL')}
-                      className="h-20 flex flex-col gap-2"
-                  >
-                    <img src="/solana-sol-logo.png" alt="Solana" className="w-8 h-8" />
-                    <span className="font-medium">SOL</span>
-                  </Button>
-                  <Button
-                      variant={selectedToken === 'USDC' ? 'default' : 'outline'}
-                      onClick={() => setSelectedToken('USDC')}
-                      className="h-20 flex flex-col gap-2"
-                  >
-                    <img src="/usd-coin-usdc-logo.png" alt="USDC" className="w-8 h-8" />
-                    <span className="font-medium">USDC</span>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {!isHybridMode && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Token</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="tokenSelect">Select Token</Label>
+                    <Select value={selectedToken} onValueChange={(value: 'SOL' | 'USDC') => setSelectedToken(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment token" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SOL">
+                          <div className="flex items-center gap-2">
+                            <img src="/solana-sol-logo.png" alt="Solana" className="w-4 h-4" />
+                            <span>SOL</span>
+                            <span className="text-xs text-muted-foreground ml-2">Solana</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="USDC">
+                          <div className="flex items-center gap-2">
+                            <img src="/usd-coin-usdc-logo.png" alt="USDC" className="w-4 h-4" />
+                            <span>USDC</span>
+                            <span className="text-xs text-muted-foreground ml-2">USD Coin</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Payment Mode & Options */}
             <Card>
               <CardHeader>
-                <CardTitle>Payment Options</CardTitle>
+                <CardTitle>Payment Configuration</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Payment Mode Selection */}
-                  <div>
-                    <Label className="text-sm font-medium mb-3 block">Payment Mode</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                          variant={paymentMode === 'custom' ? 'default' : 'outline'}
-                          onClick={() => setPaymentMode('custom')}
-                          className="h-16 flex flex-col gap-2"
-                      >
-                        <DollarSign className="w-5 h-5" />
-                        <span className="text-sm">Custom Amount</span>
-                      </Button>
-                      <Button
-                          variant={paymentMode === 'fixed' ? 'default' : 'outline'}
-                          onClick={() => setPaymentMode('fixed')}
-                          className="h-16 flex flex-col gap-2"
-                      >
-                        <QrCode className="w-5 h-5" />
-                        <span className="text-sm">Menu Items</span>
-                      </Button>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Payment Mode Dropdown */}
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentMode">Payment Mode</Label>
+                    <Select value={paymentMode} onValueChange={(value: 'custom' | 'fixed') => setPaymentMode(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="w-4 h-4" />
+                            <span>Custom Amount</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="fixed">
+                          <div className="flex items-center gap-2">
+                            <QrCode className="w-4 h-4" />
+                            <span>Menu Items</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {/* Payment Type Selection */}
-                  <div>
-                    <Label className="text-sm font-medium mb-3 block">Payment Type</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                          variant={!isHybridMode ? 'default' : 'outline'}
-                          onClick={() => setIsHybridMode(false)}
-                          className="h-20 flex flex-col gap-1 p-3 justify-center items-center text-center overflow-hidden"
-                      >
-                        <Wallet className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm font-medium leading-tight">Crypto Only</span>
-                        <span className="text-xs text-muted-foreground leading-tight">SOL, USDC</span>
-                      </Button>
-                      <Button
-                          variant={isHybridMode ? 'default' : 'outline'}
-                          onClick={() => setIsHybridMode(true)}
-                          className="h-20 flex flex-col gap-1 p-3 justify-center items-center text-center overflow-hidden"
-                      >
-                        <CreditCard className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm font-medium leading-tight">Hybrid Payment</span>
-                        <span className="text-xs text-muted-foreground leading-tight">Crypto + Fiat</span>
-                      </Button>
-                    </div>
+                  {/* Payment Type Dropdown */}
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentType">Payment Type</Label>
+                    <Select value={isHybridMode ? 'hybrid' : 'crypto'} onValueChange={(value) => setIsHybridMode(value === 'hybrid')}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="crypto">
+                          <div className="flex items-center gap-2">
+                            <Wallet className="w-4 h-4" />
+                            <span>Crypto Only</span>
+                            <span className="text-xs text-muted-foreground ml-2">SOL, USDC</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="hybrid">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="w-4 h-4" />
+                            <span>Hybrid Payment</span>
+                            <span className="text-xs text-muted-foreground ml-2">Crypto + Fiat</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardContent>
@@ -529,8 +540,8 @@ export const MerchantPOS: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="mt-4 p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                      <p className="text-sm text-teal-800">
+                    <div className="mt-4 p-3 bg-muted/50 border border-border rounded-lg">
+                      <p className="text-sm text-muted-foreground">
                         <strong>Hybrid Mode:</strong> Customers will see both crypto and bank transfer options when they scan your QR code.
                       </p>
                     </div>
@@ -702,12 +713,9 @@ export const MerchantPOS: React.FC = () => {
                 <Button
                     onClick={generatePaymentQR}
                     disabled={isLoading || getTotalAmount() <= 0}
-                    className={`w-full h-12 ${
-                        isHybridMode
-                            ? 'bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600'
-                            : ''
-                    }`}
+                    className="w-full h-12"
                     size="lg"
+                    variant={isHybridMode ? "default" : "default"}
                 >
                   {isLoading ? (
                       <>

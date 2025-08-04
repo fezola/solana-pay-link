@@ -289,7 +289,18 @@ export const LandingPage = () => {
       )}
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-background via-background to-teal-500/5 min-h-screen flex items-center">
+      <section className="relative overflow-hidden min-h-screen flex items-center">
+        {/* Custom Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/background.png)',
+          }}
+        ></div>
+
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm"></div>
+
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
 
         {/* Dynamic floating elements with mouse interaction */}
@@ -501,9 +512,20 @@ export const LandingPage = () => {
       </section>
 
       {/* Social Proof Stats */}
-      <section className="py-16 bg-muted/20 relative overflow-hidden" data-animate id="stats-section">
+      <section className="py-16 relative overflow-hidden" data-animate id="stats-section">
+        {/* Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/background2.png)',
+          }}
+        ></div>
+
+        {/* Overlay for readability */}
+        <div className="absolute inset-0 bg-background/85 backdrop-blur-sm"></div>
+
         {/* Animated background elements */}
-        <div className="absolute inset-0 opacity-30">
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-1/4 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl animate-float"></div>
           <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-green-500/10 rounded-full blur-2xl animate-float delay-1000"></div>
         </div>
@@ -555,8 +577,19 @@ export const LandingPage = () => {
       </section>
 
       {/* Problem/Solution Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
+      <section className="py-20 relative overflow-hidden">
+        {/* Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
+          style={{
+            backgroundImage: 'url(/background2.png)',
+          }}
+        ></div>
+
+        {/* Overlay for readability */}
+        <div className="absolute inset-0 bg-background/90"></div>
+
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">
               Tired of <span className="text-red-500">losing money</span> to payment processors?
@@ -619,20 +652,14 @@ export const LandingPage = () => {
                 className="p-6 border-border/50 hover:border-teal-500/20 transition-all duration-500 hover:shadow-xl hover:-translate-y-2 group bg-background"
                 style={{ animationDelay: `${index * 200}ms` }}
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-green-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {testimonial.avatar}
-                  </div>
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h4 className="font-semibold">{testimonial.name}</h4>
                     <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                   </div>
-                  <div className="ml-auto">
-                    <div className="flex items-center gap-1">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
+                  <div className="flex items-center gap-1">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    ))}
                   </div>
                 </div>
 
@@ -816,7 +843,18 @@ export const LandingPage = () => {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-teal-500/10 via-background to-green-500/10 relative overflow-hidden">
+      <section className="py-20 relative overflow-hidden">
+        {/* Background Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/background2.png)',
+          }}
+        ></div>
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/20 via-background/80 to-green-500/20"></div>
+
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
 
         <div className="container mx-auto px-4 relative">
