@@ -18,6 +18,9 @@ import { MerchantPOS } from "./pages/MerchantPOS";
 import { POSDemo } from "./pages/POSDemo";
 import { PaymentRedirect } from "./pages/PaymentRedirect";
 import { AccountRecovery } from "./pages/AccountRecovery";
+import { HybridPOSPage } from "./pages/HybridPOSPage";
+import { HybridPayment } from "./pages/HybridPayment";
+import { HybridPOSDemo } from "./pages/HybridPOSDemo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +41,7 @@ const App = () => (
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/pos" element={<MerchantPOS />} />
               <Route path="/pos-demo" element={<POSDemo />} />
+              <Route path="/hybrid-pay" element={<HybridPayment />} />
               <Route path="/pay" element={<PaymentRedirect />} />
               <Route path="/integration" element={<MerchantIntegration />} />
               <Route path="/recover" element={<AccountRecovery />} />
@@ -45,6 +49,7 @@ const App = () => (
               <Route path="/coffee" element={<BuyMeCoffee />} />
               <Route path="/shop" element={<EcommerceDemo />} />
               <Route path="/multichain" element={<MultiChainDemo />} />
+              <Route path="/hybrid-demo" element={<HybridPOSDemo />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

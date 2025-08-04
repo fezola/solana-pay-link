@@ -16,7 +16,12 @@ import {
   RefreshCw,
   Wallet,
   Plus,
-  Minus
+  Minus,
+  CreditCard,
+  ToggleLeft,
+  ToggleRight,
+  Building,
+  User
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
@@ -42,12 +47,25 @@ export const MerchantPOS = () => {
   const [customAmount, setCustomAmount] = useState('');
   const [customerNote, setCustomerNote] = useState('');
   const [paymentMode, setPaymentMode] = useState<'fixed' | 'custom'>('custom');
+
+  // Hybrid Payment State
+  const [isHybridMode, setIsHybridMode] = useState(false);
+  const [hybridConfig, setHybridConfig] = useState({
+    bankAccount: '',
+    bankName: '',
+    accountHolder: '',
+    supportedFiatMethods: ['Bank Transfer', 'Mobile Money'],
+    country: 'NG', // Default to Nigeria
+    localCurrency: 'NGN'
+  });
   
   // Payment State
   const [currentPayment, setCurrentPayment] = useState<{
     qrCode: string;
     paymentUrl: string;
     amount: number;
+    reference: string;
+    isHybrid?: boolean;
     reference: string;
   } | null>(null);
 
@@ -157,46 +175,111 @@ export const MerchantPOS = () => {
       return;
     }
 
+    // Check hybrid mode requirements
+    if (isHybridMode && (!hybridConfig.bankAccount || !hybridConfig.accountHolder)) {
+      toast({
+        title: "Hybrid Setup Incomplete",
+        description: "Please configure bank account details for hybrid payments",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Create invoice
-      const recipientAddress = merchant.walletAddress;
+      const description = paymentMode === 'custom'
+        ? customerNote || 'In-store payment'
+        : cart.map(item => `${item.quantity}x ${item.name}`).join(', ');
 
-      const invoice = createInvoice({
-        amount: amount.toString(),
-        token: selectedToken,
-        recipient: recipientAddress,
-        title: paymentMode === 'custom' ? 'Custom Payment' : 'Store Purchase',
-        description: paymentMode === 'custom'
-          ? customerNote || 'In-store payment'
-          : cart.map(item => `${item.quantity}x ${item.name}`).join(', ')
-      });
+      if (isHybridMode) {
+        // Generate hybrid payment data
+        const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const hybridPaymentData = {
+          id: paymentId,
+          merchantId: merchant.id || 'merchant_demo',
+          amount,
+          currency: hybridConfig.localCurrency,
+          description,
+          cryptoOptions: {
+            wallet: merchant.walletAddress,
+            supportedTokens: ['SOL', 'USDC', 'USDT']
+          },
+          fiatOptions: {
+            accountNumber: hybridConfig.bankAccount,
+            bankName: hybridConfig.bankName,
+            accountHolder: hybridConfig.accountHolder,
+            paymentMethods: hybridConfig.supportedFiatMethods
+          },
+          status: 'pending',
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+        };
 
-      // Generate Solana Pay URL
-      const paymentUrl = generatePaymentURL(invoice);
+        // Store payment data
+        localStorage.setItem(`hybrid_payment_${paymentId}`, JSON.stringify(hybridPaymentData));
 
-      // Create explicit Solana Pay URL to avoid Base wallet interference
-      const solanaPayUrl = paymentUrl.startsWith('solana:')
-        ? paymentUrl
-        : `solana:${merchant.walletAddress}?amount=${amount}&reference=${invoice.reference.toString()}&label=${encodeURIComponent(invoice.title)}&message=${encodeURIComponent(invoice.description)}`;
+        // Generate hybrid payment URL
+        const baseUrl = window.location.origin;
+        const hybridPaymentUrl = `${baseUrl}/hybrid-pay?id=${paymentId}`;
 
-      // Generate QR code with HIGH CONTRAST for camera detection
-      const qrCodeDataUrl = await QRCode.toDataURL(solanaPayUrl, {
-        width: 400,
-        margin: 3,
-        color: {
-          dark: '#000000', // BLACK for maximum contrast
-          light: '#FFFFFF'  // WHITE background
-        },
-        errorCorrectionLevel: 'H' // High error correction
-      });
+        // Generate QR code for hybrid payment
+        const qrCodeDataUrl = await QRCode.toDataURL(hybridPaymentUrl, {
+          width: 400,
+          margin: 3,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          },
+          errorCorrectionLevel: 'H'
+        });
 
-      setCurrentPayment({
-        qrCode: qrCodeDataUrl,
-        paymentUrl,
-        amount,
-        reference: invoice.reference.toString()
-      });
+        setCurrentPayment({
+          qrCode: qrCodeDataUrl,
+          paymentUrl: hybridPaymentUrl,
+          amount,
+          reference: paymentId,
+          isHybrid: true
+        });
+
+      } else {
+        // Original crypto-only payment
+        const recipientAddress = merchant.walletAddress;
+
+        const invoice = createInvoice({
+          amount: amount.toString(),
+          token: selectedToken,
+          recipient: recipientAddress,
+          title: paymentMode === 'custom' ? 'Custom Payment' : 'Store Purchase',
+          description
+        });
+
+        // Generate Solana Pay URL
+        const paymentUrl = generatePaymentURL(invoice);
+
+        // Create explicit Solana Pay URL
+        const solanaPayUrl = paymentUrl.startsWith('solana:')
+          ? paymentUrl
+          : `solana:${merchant.walletAddress}?amount=${amount}&reference=${invoice.reference.toString()}&label=${encodeURIComponent(invoice.title)}&message=${encodeURIComponent(invoice.description)}`;
+
+        // Generate QR code
+        const qrCodeDataUrl = await QRCode.toDataURL(solanaPayUrl, {
+          width: 400,
+          margin: 3,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          },
+          errorCorrectionLevel: 'H'
+        });
+
+        setCurrentPayment({
+          qrCode: qrCodeDataUrl,
+          paymentUrl,
+          amount,
+          reference: invoice.reference.toString(),
+          isHybrid: false
+        });
+      }
 
       toast({
         title: "Payment QR Generated",
@@ -358,6 +441,115 @@ export const MerchantPOS = () => {
               </CardContent>
             </Card>
 
+            {/* Hybrid Payment Toggle */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Payment Options
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsHybridMode(!isHybridMode)}
+                    className="flex items-center gap-2"
+                  >
+                    {isHybridMode ? (
+                      <ToggleRight className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <ToggleLeft className="w-5 h-5 text-muted-foreground" />
+                    )}
+                    <span className="text-sm">
+                      {isHybridMode ? 'Hybrid Mode' : 'Crypto Only'}
+                    </span>
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-teal-500/10 rounded-lg">
+                    <Wallet className="w-5 h-5 text-teal-500" />
+                    <div>
+                      <p className="font-medium text-sm">Cryptocurrency</p>
+                      <p className="text-xs text-muted-foreground">SOL, USDC - Instant settlement</p>
+                    </div>
+                  </div>
+
+                  {isHybridMode && (
+                    <div className="flex items-center gap-3 p-3 bg-blue-500/10 rounded-lg">
+                      <CreditCard className="w-5 h-5 text-blue-500" />
+                      <div>
+                        <p className="font-medium text-sm">Traditional Payments</p>
+                        <p className="text-xs text-muted-foreground">Bank transfer, mobile money</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Hybrid Configuration */}
+            {isHybridMode && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="w-5 h-5" />
+                    Bank Account Setup
+                  </CardTitle>
+                  <CardDescription>
+                    Configure your bank details for traditional payments
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="accountHolder">Account Holder Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="accountHolder"
+                        placeholder="Full name on account"
+                        value={hybridConfig.accountHolder}
+                        onChange={(e) => setHybridConfig(prev => ({ ...prev, accountHolder: e.target.value }))}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccount">Bank Account Number</Label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="bankAccount"
+                        placeholder="Account number"
+                        value={hybridConfig.bankAccount}
+                        onChange={(e) => setHybridConfig(prev => ({ ...prev, bankAccount: e.target.value }))}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bankName">Bank Name</Label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="bankName"
+                        placeholder="Bank name"
+                        value={hybridConfig.bankName}
+                        onChange={(e) => setHybridConfig(prev => ({ ...prev, bankName: e.target.value }))}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Note:</strong> Customers will see both crypto and bank transfer options when they scan your QR code.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Custom Amount Mode */}
             {paymentMode === 'custom' && (
               <Card>
@@ -511,7 +703,11 @@ export const MerchantPOS = () => {
             <Button
               onClick={generatePaymentQR}
               disabled={isLoading || getTotalAmount() <= 0}
-              className="w-full h-12"
+              className={`w-full h-12 ${
+                isHybridMode
+                  ? 'bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600'
+                  : ''
+              }`}
               size="lg"
             >
               {isLoading ? (
@@ -522,7 +718,10 @@ export const MerchantPOS = () => {
               ) : (
                 <>
                   <QrCode className="w-4 h-4 mr-2" />
-                  Generate Payment QR ({getTotalAmount()} {selectedToken})
+                  {isHybridMode
+                    ? `Generate Hybrid QR (${getTotalAmount()} ${hybridConfig.localCurrency})`
+                    : `Generate Payment QR (${getTotalAmount()} ${selectedToken})`
+                  }
                 </>
               )}
             </Button>
@@ -533,19 +732,34 @@ export const MerchantPOS = () => {
             {currentPayment ? (
               <>
                 {/* QR Code Display */}
-                <Card className="border-2 border-purple-500/20">
+                <Card className={`border-2 ${currentPayment.isHybrid ? 'border-teal-500/20' : 'border-purple-500/20'}`}>
                   <CardHeader>
                     <CardTitle className="text-center flex items-center justify-center gap-2">
-                      <img src="/solana-sol-logo.png" alt="Solana" className="w-6 h-6" />
-                      <span>{selectedToken} PAYMENT QR CODE</span>
-                      <img
-                        src={selectedToken === 'SOL' ? '/solana-sol-logo.png' : '/usd-coin-usdc-logo.png'}
-                        alt={selectedToken}
-                        className="w-6 h-6"
-                      />
+                      {currentPayment.isHybrid ? (
+                        <>
+                          <Wallet className="w-6 h-6 text-teal-500" />
+                          <span>HYBRID PAYMENT QR CODE</span>
+                          <CreditCard className="w-6 h-6 text-blue-500" />
+                        </>
+                      ) : (
+                        <>
+                          <img src="/solana-sol-logo.png" alt="Solana" className="w-6 h-6" />
+                          <span>{selectedToken} PAYMENT QR CODE</span>
+                          <img
+                            src={selectedToken === 'SOL' ? '/solana-sol-logo.png' : '/usd-coin-usdc-logo.png'}
+                            alt={selectedToken}
+                            className="w-6 h-6"
+                          />
+                        </>
+                      )}
                     </CardTitle>
-                    <CardDescription className="text-center text-purple-600 font-medium">
-                      📱 SCAN WITH SOLANA WALLET (Phantom, Solflare, etc.)
+                    <CardDescription className={`text-center font-medium ${
+                      currentPayment.isHybrid ? 'text-teal-600' : 'text-purple-600'
+                    }`}>
+                      {currentPayment.isHybrid
+                        ? '📱 SCAN TO CHOOSE: CRYPTO OR BANK TRANSFER'
+                        : '📱 SCAN WITH SOLANA WALLET (Phantom, Solflare, etc.)'
+                      }
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-center space-y-4">
@@ -569,16 +783,36 @@ export const MerchantPOS = () => {
                     
                     <div className="space-y-2">
                       <Badge variant="outline" className="text-lg px-4 py-2">
-                        {currentPayment.amount} {selectedToken}
+                        {currentPayment.amount} {currentPayment.isHybrid ? hybridConfig.localCurrency : selectedToken}
                       </Badge>
                       <p className="text-sm text-muted-foreground">
                         Reference: {currentPayment.reference}
                       </p>
                     </div>
 
+                    {/* Payment Options Display */}
+                    {currentPayment.isHybrid && (
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium">Available Payment Methods:</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex items-center gap-2 p-2 bg-teal-50 rounded-lg border border-teal-200">
+                            <Wallet className="w-4 h-4 text-teal-500" />
+                            <span className="text-xs font-medium">Crypto</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                            <CreditCard className="w-4 h-4 text-blue-500" />
+                            <span className="text-xs font-medium">Bank Transfer</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <div className="text-xs text-muted-foreground">
-                        Solana Pay URL: <code className="bg-muted px-1 rounded text-xs">{currentPayment.paymentUrl.slice(0, 30)}...</code>
+                        {currentPayment.isHybrid ? 'Hybrid Payment' : 'Solana Pay'} URL:
+                        <code className="bg-muted px-1 rounded text-xs ml-1">
+                          {currentPayment.paymentUrl.slice(0, 30)}...
+                        </code>
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -587,11 +821,15 @@ export const MerchantPOS = () => {
                           className="flex-1"
                         >
                           <Copy className="w-4 h-4 mr-2" />
-                          Copy Solana URL
+                          Copy URL
                         </Button>
                         <Button
                           onClick={resetPayment}
-                          className="flex-1 bg-purple-500 hover:bg-purple-600"
+                          className={`flex-1 ${
+                            currentPayment.isHybrid
+                              ? 'bg-teal-500 hover:bg-teal-600'
+                              : 'bg-purple-500 hover:bg-purple-600'
+                          }`}
                         >
                           <RefreshCw className="w-4 h-4 mr-2" />
                           New Payment
@@ -602,17 +840,39 @@ export const MerchantPOS = () => {
                 </Card>
 
                 {/* Payment Instructions */}
-                <Alert className="border-green-500/20 bg-green-500/5">
-                  <Smartphone className="h-4 w-4 text-green-500" />
+                <Alert className={`${
+                  currentPayment.isHybrid
+                    ? 'border-teal-500/20 bg-teal-500/5'
+                    : 'border-green-500/20 bg-green-500/5'
+                }`}>
+                  <Smartphone className={`h-4 w-4 ${
+                    currentPayment.isHybrid ? 'text-teal-500' : 'text-green-500'
+                  }`} />
                   <AlertDescription>
-                    <strong className="text-green-600">📱 SCANNING INSTRUCTIONS:</strong><br />
-                    1. <strong>Open your phone camera</strong> or Solana wallet app<br />
-                    2. <strong>Point at the QR code</strong> above<br />
-                    3. <strong>Tap the notification</strong> when it appears<br />
-                    4. <strong>Choose Solana wallet</strong> (Phantom/Solflare)<br />
-                    5. <strong>Confirm payment</strong> in your wallet<br />
-                    <br />
-                    <span className="text-blue-600 font-medium">💡 QR code is now HIGH CONTRAST for better camera detection!</span>
+                    {currentPayment.isHybrid ? (
+                      <>
+                        <strong className="text-teal-600">📱 HYBRID PAYMENT INSTRUCTIONS:</strong><br />
+                        1. <strong>Open your phone camera</strong> and scan the QR code<br />
+                        2. <strong>Choose your payment method:</strong><br />
+                        &nbsp;&nbsp;&nbsp;• <strong>Crypto:</strong> Pay with SOL, USDC, or USDT<br />
+                        &nbsp;&nbsp;&nbsp;• <strong>Bank Transfer:</strong> Pay with {hybridConfig.localCurrency}<br />
+                        3. <strong>Follow the instructions</strong> for your chosen method<br />
+                        4. <strong>Payment confirmed</strong> automatically<br />
+                        <br />
+                        <span className="text-blue-600 font-medium">💡 One QR code, multiple payment options!</span>
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-green-600">📱 SCANNING INSTRUCTIONS:</strong><br />
+                        1. <strong>Open your phone camera</strong> or Solana wallet app<br />
+                        2. <strong>Point at the QR code</strong> above<br />
+                        3. <strong>Tap the notification</strong> when it appears<br />
+                        4. <strong>Choose Solana wallet</strong> (Phantom/Solflare)<br />
+                        5. <strong>Confirm payment</strong> in your wallet<br />
+                        <br />
+                        <span className="text-blue-600 font-medium">💡 QR code is now HIGH CONTRAST for better camera detection!</span>
+                      </>
+                    )}
                   </AlertDescription>
                 </Alert>
               </>
