@@ -34,7 +34,7 @@ import {
   formatBaseAddress,
   createBasePayButtonData
 } from '@/lib/base-pay';
-import { BasePayButton, OfficialBasePayButton } from '@/components/BasePayButton';
+// import { BasePayButton, OfficialBasePayButton } from '@/components/BasePayButton'; // Temporarily removed for demo
 import QRCodeLib from 'qrcode';
 
 // Mock merchant data - in a real app this would come from a database
@@ -339,27 +339,17 @@ export const BuyMeCoffee = () => {
                         Fast, secure USDC payment on Base network. No gas fees, settles in seconds.
                       </p>
 
-                      {/* Official Base Pay Button */}
+                      {/* Base Pay Button - Temporarily Disabled */}
                       <div className="flex justify-center mb-4">
-                        <OfficialBasePayButton
-                          amount={selectedAmount.toString()}
-                          to={MERCHANT_DATA.baseWalletAddress}
-                          testnet={true}
-                          colorScheme="light"
-                          onPaymentStart={() => {
-                            toast({
-                              title: "Base Pay Started",
-                              description: "Opening Base Pay wallet...",
-                            });
-                          }}
-                          onPaymentComplete={(id) => {
-                            setBasePaymentId(id);
-                            setBasePaymentStatus('completed');
-                          }}
-                          onPaymentError={(error) => {
-                            setBasePaymentStatus('failed');
-                          }}
-                        />
+                        <Button
+                          disabled
+                          className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                        >
+                          Base Pay - Coming Soon
+                        </Button>
+                      </div>
+                      <div className="text-center text-sm text-gray-500 mb-4">
+                        Base Pay functionality is temporarily disabled for demo recording.
                       </div>
 
                       <div className="text-xs text-blue-600 space-y-1">
@@ -625,22 +615,18 @@ export const BuyMeCoffee = () => {
                         <div className="text-xs text-gray-500 mt-1">SOL, USDC</div>
                       </button>
                       <button
-                        onClick={() => setSelectedNetwork('base')}
-                        className={`px-3 py-3 text-sm font-medium rounded-md transition-colors ${
-                          selectedNetwork === 'base'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                        disabled
+                        className="px-3 py-3 text-sm font-medium rounded-md bg-gray-200 text-gray-400 cursor-not-allowed"
                       >
                         <div className="flex items-center justify-center gap-2">
                           <img
-                            src={BASE_PAY_CONFIG.mainnet.logo}
+                            src="/usd-coin-usdc-logo.png"
                             alt="Base"
-                            className="w-5 h-5"
+                            className="w-5 h-5 opacity-50"
                           />
                           <span>Base Pay</span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">USDC only</div>
+                        <div className="text-xs text-gray-400 mt-1">Coming Soon</div>
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">

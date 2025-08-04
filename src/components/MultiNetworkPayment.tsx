@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Copy, ExternalLink, QrCode, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { OfficialBasePayButton } from './BasePayButton';
+// import { OfficialBasePayButton } from './BasePayButton'; // Temporarily removed for demo
 import { generatePaymentURL } from '@/lib/payment-utils';
 import QRCodeLib from 'qrcode';
 
@@ -206,32 +206,23 @@ export const MultiNetworkPayment = ({ invoice, onPaymentComplete }: MultiNetwork
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Base Pay Button */}
+                  {/* Base Pay Button - Temporarily Removed for Demo */}
                   <div className="text-center">
-                    {invoice.baseWallet ? (
-                      <OfficialBasePayButton
-                        amount={invoice.amount}
-                        to={invoice.baseWallet}
-                        testnet={true}
-                        colorScheme="light"
-                        onPaymentComplete={(txId) => {
-                          onPaymentComplete?.('base', txId);
-                        }}
-                        onPaymentError={(error) => {
-                          toast({
-                            title: "Base Pay Error",
-                            description: error,
-                            variant: "destructive"
-                          });
-                        }}
-                      />
-                    ) : (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-yellow-800">
-                          Base wallet address not configured for this payment link.
+                    <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-blue-800 mb-4">
+                        <h4 className="font-semibold mb-2">Base Pay Integration</h4>
+                        <p className="text-sm">
+                          Base Pay functionality is temporarily disabled for demo recording.
+                          This feature will be re-enabled after the demo.
                         </p>
                       </div>
-                    )}
+                      <Button
+                        disabled
+                        className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                      >
+                        Base Pay - Coming Soon
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Alternative Actions */}

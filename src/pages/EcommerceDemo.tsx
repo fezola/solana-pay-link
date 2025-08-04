@@ -27,7 +27,7 @@ import {
 // Removed broken imports that were causing issues
 
 import { calculateCartTotal } from '@/lib/currency-utils';
-import { OfficialBasePayButton } from '@/components/BasePayButton';
+// import { OfficialBasePayButton } from '@/components/BasePayButton'; // Temporarily removed for demo
 
 // Mock product data - All prices in USD, store accepts multiple currencies
 // REDUCED PRICES FOR DEVNET TESTING
@@ -409,34 +409,26 @@ export const EcommerceDemo = () => {
                       </Button>
                     </div>
 
-                    {/* Base Pay Option */}
-                    <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+                    {/* Base Pay Option - Temporarily Disabled */}
+                    <div className="p-4 border-2 border-gray-200 rounded-lg bg-gray-50">
                       <div className="flex items-center gap-3 mb-3">
                         <img
                           src="/usd-coin-usdc-logo.png"
                           alt="USDC"
-                          className="w-8 h-8"
+                          className="w-8 h-8 opacity-50"
                         />
                         <div>
-                          <h3 className="font-semibold text-blue-900">Base Pay - USDC</h3>
-                          <p className="text-sm text-blue-700">Fast, secure, no gas fees</p>
+                          <h3 className="font-semibold text-gray-600">Base Pay - USDC</h3>
+                          <p className="text-sm text-gray-500">Temporarily disabled for demo</p>
                         </div>
                       </div>
 
-                      <OfficialBasePayButton
-                        amount={cartTotal.toString()}
-                        to="0x4c4838D1CBeA08ad2288C5630d1953C12e32886b" // Store's Base address (testnet)
-                        testnet={true}
-                        colorScheme="light"
-                        onPaymentComplete={() => {
-                          toast({
-                            title: "Payment Successful!",
-                            description: "Your order has been processed",
-                          });
-                          setCart([]);
-                          setShowCheckout(false);
-                        }}
-                      />
+                      <Button
+                        disabled
+                        className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                      >
+                        Base Pay - Coming Soon
+                      </Button>
                     </div>
 
                   </CardContent>
